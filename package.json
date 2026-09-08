@@ -2,28 +2,9 @@
   "name": "d2surveillanceportal",
   "version": "1.0.0",
   "description": "QC-DESU District 2 Master Disease Surveillance and Feedback Portal",
-  "main": "index.html",
   "scripts": {
-    "dev": "vercel dev",
-    "start": "npx serve .",
-    "build": "echo 'Static build ready for Vercel'",
-    "deploy": "vercel --prod",
-    "gas:push": "clasp push",
-    "gas:pull": "clasp pull"
+    "start": "npx serve ."
   },
-  "keywords": [
-    "surveillance",
-    "epidemiology",
-    "district2",
-    "quezon-city",
-    "pidsr",
-    "google-apps-script",
-    "vercel"
-  ],
-  "author": "District 2 Epidemiology & Surveillance Division (QC-DESU)",
-  "license": "ISC",
   "dependencies": {},
-  "devDependencies": {
-    "@google/clasp": "^2.4.2"
-  }
+  "devDependencies": {}
 }

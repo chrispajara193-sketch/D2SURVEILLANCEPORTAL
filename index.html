@@ -4007,7 +4007,7 @@ const db = firebase.database();
 
     const syncEl = document.getElementById("syncTimestamp");
     if (syncEl && res.syncTime) {
-      syncEl.innerHTML = `<i class="fa-solid fa-circle text-success"></i> Live Firebase ` + res.syncTime;
+      syncEl.innerHTML = `<i class="fa-solid fa-circle text-success"></i> Live ` + res.syncTime;
     }
 
     renderDashboardCategorizedSurveillance(datasetCache);
