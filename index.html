@@ -3313,6 +3313,7 @@
                loadNavdpcpData();
                loadMasterRecords();
              }
+            } 
             showToast("Surveillance dataset updated successfully!");
           })
           .withFailureHandler(function(err) {
@@ -3543,7 +3544,7 @@
           const dynamicAlpha = 0.8 + Math.sin(this.pulse) * 0.2;
           ctx.beginPath();
           ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${this.palette.r}, ${this.palette.b}, ${this.palette.b}, ${dynamicAlpha})`;
+          ctx.fillStyle = `rgba(${this.palette.r}, ${this.palette.g}, ${this.palette.b}, ${dynamicAlpha})`;
           ctx.fill();
         }
       }
@@ -4269,6 +4270,15 @@
       let resolvedBaseline = thresholdBaselines ? (thresholdBaselines[cleanDiseaseKey] || thresholdBaselines["DENGUE"]) : null;
 
       if (resolvedBaseline) {
+    const brgyData = (cleanBrgyKey && cleanBrgyKey !== "ALL BARANGAY" && resolvedBaseline.barangays)
+      ? (resolvedBaseline.barangays[cleanBrgyKey] || resolvedBaseline)
+      : resolvedBaseline;
+
+      if (brgyData.epidemic) epidemicThresholdLine = brgyData.epidemic;
+      if (brgyData.alert) alertThresholdLine = brgyData.alert;
+     }
+
+      if (resolvedBaseline) {
         if (resolvedBaseline.epidemic) epidemicThresholdLine = resolvedBaseline.epidemic;
         if (resolvedBaseline.alert) alertThresholdLine = resolvedBaseline.alert;
       }
@@ -4575,15 +4585,34 @@
     }
 
     function handlePdsFileUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        document.getElementById("CIF/CRF").value = file.name;
-        showToast(`Attached: ${file.name}`);
-      };
-      reader.readAsDataURL(file);
-    }
+  const file = event.target.files[0];
+  if (!file) return;
+  showToast("Uploading document to Drive...");
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64Data = e.target.result;
+    const caseId = document.getElementById("CASE_ID").value.trim() || "CASE";
+    
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          document.getElementById("CIF/CRF").value = res.url;
+          showToast("CIF uploaded successfully!");
+        } else {
+          showToast("Upload failed: " + (res ? res.message : "Error"));
+        }
+      })
+      .withFailureHandler(function(err) {
+        showToast("Upload error: " + err.message);
+      })
+      .uploadPdsFile({
+        base64Data: base64Data,
+        caseId: caseId,
+        fileName: file.name
+      });
+  };
+  reader.readAsDataURL(file);
+}
 
     function downloadPdsFile(fileDataOrUrl, caseId = 'PDS_File') {
       if (!fileDataOrUrl) return;

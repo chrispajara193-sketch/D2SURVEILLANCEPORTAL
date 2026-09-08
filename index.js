@@ -368,7 +368,7 @@ function processLogin(data) {
       const dbPass = String(rows[i][1] || '').trim();
       const dbStatus = String(rows[i][2] || '').trim().toLowerCase();
       
-      // READ COLUMN D (User Level) AND COLUMN E (Designation)
+      // Reads Column D (User Level) and Column E (Designation)
       const dbRole = String(rows[i][3] || 'HC_USER').trim().toUpperCase();
       const dbDesignation = String(rows[i][4] || '').trim();
 
