@@ -2,18 +2,19 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, border-box, viewport-fit=cover"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover"/>
   <title>QC-DESU District 2 Master Surveillance Portal</title>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
 
   <style>
     :root {
@@ -2847,9 +2848,11 @@
   databaseURL: "https://d2surveillanceportal-default-rtdb.asia-southeast1.firebasedatabase.app"
   };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+  const db = firebase.database();
+  
   /* =========================================================================
    * DIRECT VS CODE <-> GOOGLE APPS SCRIPT REAL-TIME CONNECTOR
    * ========================================================================= */
@@ -4001,34 +4004,29 @@ const db = firebase.database();
     }
 
     function loadDataServer() {
-  showToast("Connecting to live Firebase stream...");
+      showToast("Connecting to live Firebase stream...");
 
-  // Listen for real-time changes
-  db.ref("surveillance_data").on("value", function(snapshot) {
-    const res = snapshot.val();
-    if (!res) {
-      console.log("No data found in Firebase node 'surveillance_data'. Falling back to Apps Script.");
-      return;
+      db.ref("surveillance_data").on("value", function(snapshot) {
+        const res = snapshot.val();
+        if (!res || !res.data) return;
+
+        datasetCache = res.data || [];
+        thresholdBaselines = res.baselines || {}; 
+        masterHealthCenters = res.dropdowns ? res.dropdowns.healthCenters : [];
+        
+        buildSelectorFromMap("selCenter", ["ALL HEALTH CENTERS"].concat(masterHealthCenters));
+        populateNavdpcpHealthCenters(masterHealthCenters);
+        populatePatientProfileFilterDropdowns();
+
+        const syncEl = document.getElementById("syncTimestamp");
+        if (syncEl && res.syncTime) {
+          syncEl.innerHTML = `<i class="fa-solid fa-circle text-success"></i> Live Firebase ` + res.syncTime;
+        }
+        
+        renderDashboardCategorizedSurveillance(datasetCache);
+        runFilterPipeline();
+      });
     }
-
-    datasetCache = res.data || [];
-    thresholdBaselines = res.baselines || {};
-    masterHealthCenters = res.dropdowns ? res.dropdowns.healthCenters : [];
-
-    buildSelectorFromMap("selCenter", ["ALL HEALTH CENTERS"].concat(masterHealthCenters));
-    populateNavdpcpHealthCenters(masterHealthCenters);
-    populatePatientProfileFilterDropdowns();
-
-    const syncEl = document.getElementById("syncTimestamp");
-    if (syncEl && res.syncTime) {
-      syncEl.innerHTML = `<i class="fa-solid fa-circle text-success"></i> Live ` + res.syncTime;
-    }
-
-    renderDashboardCategorizedSurveillance(datasetCache);
-    runFilterPipeline();
-    showToast("Live dataset synchronized!");
-  });
-}
 
     function loadCaseDurationData() {
       if (!isAuthenticated) return;
