@@ -2402,6 +2402,18 @@
         </div>
       </div>
 
+      <div class="row mt-4">
+            <div class="col-12" id="healthCenterDistributionCol">
+              <div class="chart-card mb-0">
+                <div class="chart-header-title">TOTAL CASES DISTRIBUTION PER HEALTH CENTER</div>
+                <div style="position: relative; height: 420px; width: 100%;">
+                  <canvas id="healthCenterDistributionCanvas"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       <!-- VIEW 2: FEEDBACK MONITORING -->
       <div id="view-duration" class="view-container main-view-wrapper" style="display: none;">
         <div class="mb-4 pb-3 border-bottom">
@@ -3428,6 +3440,7 @@ const db = firebase.database();
     let allDiseasesChartInstance = null;
     let diseaseSharePieInstance = null;
     let barangayDistributionChartInstance = null;
+    let healthCenterDistributionChartInstance = null;
     let caseClassificationChartInstance = null;
 
     const inBarDataLabelsPlugin = {
@@ -4444,6 +4457,58 @@ const db = firebase.database();
       });
     }
 
+    function generateHealthCenterDistributionChart(filteredRecords) {
+  const counts = {};
+  filteredRecords.forEach(item => {
+    const hc = String(item.healthCenter || "").trim();
+    if (hc && hc !== "Unassigned Health Center" && hc !== "DELIST/NON-RES") {
+      counts[hc] = (counts[hc] || 0) + 1;
+    }
+  });
+
+  // Sort descending by highest case count
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+  if (healthCenterDistributionChartInstance !== null) {
+    healthCenterDistributionChartInstance.destroy();
+  }
+
+  const canvas = document.getElementById('healthCenterDistributionCanvas');
+  if (!canvas) return;
+
+  healthCenterDistributionChartInstance = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: entries.map(e => e[0]),
+      datasets: [{
+        data: entries.map(e => e[1]),
+        backgroundColor: '#2d6a7f',
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: 'y', // Horizontal orientation for readable facility names
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { display: false }
+        },
+        y: {
+          grid: { display: false },
+          ticks: {
+            font: { size: 10, weight: 'bold' }
+          }
+        }
+      }
+    }
+  });
+}
+
     function generateAllDiseasesBreakdownChart(subsetRecords) {
       const sourceCounts = { "PHSU ENDORSEMENT": 0, "HC DETECTED": 0 };
       const diseaseCounts = {};
@@ -4982,6 +5047,7 @@ const db = firebase.database();
       generateAllDiseasesBreakdownChart(baseFilteredRecords);
       generateBarangayDistributionChart(diseaseSpecificRecords, targetBarangay || "ALL BARANGAY");
       generateCaseClassificationChart(diseaseSpecificRecords);
+      generateHealthCenterDistributionChart(diseaseSpecificRecords);
     }
 
     function evaluateDashboardLayout() {
