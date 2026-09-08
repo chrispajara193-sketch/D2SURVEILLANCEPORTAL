@@ -702,16 +702,21 @@
 
     /* HOME HERO & CARDS */
     .home-hero-wrap {
-      background: #142838 url('./assets/logo/esd.png') center center / contain no-repeat;
+      background-color: #142838;
+      background-image: url('./assets/logo/esd.png');
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: 100% 100%;
       color: #ffffff;
       padding: 40px 36px;
       position: relative;
       overflow: hidden;
       border-bottom: 2px solid rgba(222, 122, 56, 0.35);
-      min-height: 460px;
+      min-height: 480px;
       display: flex;
       align-items: center;
     }
+
     @media (max-width: 991px) {
       .home-hero-wrap {
         background-size: cover;
