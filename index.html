@@ -156,6 +156,35 @@
     }
 
     .logo-container { display: flex; align-items: center; gap: 12px; }
+
+    .header-logo-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-brand-logo {
+      width: 42px;
+      height: 42px;
+      min-width: 42px;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15));
+      transition: transform 0.2s ease;
+    }
+
+    .header-brand-logo:hover {
+      transform: scale(1.08);
+    }
+
+    /* Keep it neat on mobile screens */
+    @media (max-width: 576px) {
+      .header-brand-logo {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+      }
+    }
+
     .brand-logo-badge {
       width: 42px;
       height: 42px;
@@ -1622,10 +1651,22 @@
   <!-- TOP HEADER -->
   <div class="top-header">
     <div class="logo-container">
-      <div class="brand-logo-badge"><i class="fa-solid fa-earth-asia"></i></div>
+      <!-- 2 LOGOS ON THE LEFT -->
+      <div class="header-logo-group">
+        <img src="./assets/logo/qcesd.png" alt="qcesd Logo" class="header-brand-logo" />
+        <img src="./assets/logo/d2cesu.png" alt="d2cesu Logo" class="header-brand-logo" />
+      </div>
+
+      <!-- CENTER TITLE -->
       <div class="brand-title-wrap">
         <div class="brand-main-title">DISTRICT <span>2</span></div>
         <div class="brand-sub-title">Epidemiology & Surveillance Division</div>
+      </div>
+
+      <!-- 2 LOGOS ON THE RIGHT -->
+      <div class="header-logo-group">
+        <img src="./assets/logo/qchd.png" alt="qchd Logo" class="header-brand-logo" />
+        <img src="./assets/logo/qc.png" alt="qc Logo" class="header-brand-logo" />
       </div>
     </div>
 
