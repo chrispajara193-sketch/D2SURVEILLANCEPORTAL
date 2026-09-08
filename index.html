@@ -4003,29 +4003,61 @@ if (!firebase.apps.length) {
       } catch (err) {}
     }
 
+    /* =========================================================================
+     * REAL-TIME DATA LOADER & REFRESH (FIREBASE STREAM)
+     * ========================================================================= */
     function loadDataServer() {
       showToast("Connecting to live Firebase stream...");
 
       db.ref("surveillance_data").on("value", function(snapshot) {
         const res = snapshot.val();
-        if (!res || !res.data) return;
-
-        datasetCache = res.data || [];
-        thresholdBaselines = res.baselines || {}; 
-        masterHealthCenters = res.dropdowns ? res.dropdowns.healthCenters : [];
-        
-        buildSelectorFromMap("selCenter", ["ALL HEALTH CENTERS"].concat(masterHealthCenters));
-        populateNavdpcpHealthCenters(masterHealthCenters);
-        populatePatientProfileFilterDropdowns();
-
-        const syncEl = document.getElementById("syncTimestamp");
-        if (syncEl && res.syncTime) {
-          syncEl.innerHTML = `<i class="fa-solid fa-circle text-success"></i> Live Firebase ` + res.syncTime;
+        if (!res || !res.data) {
+          console.warn("No data in Firebase node 'surveillance_data'");
+          return;
         }
-        
-        renderDashboardCategorizedSurveillance(datasetCache);
-        runFilterPipeline();
+
+        applyPortalData(res);
+      }, function(error) {
+        console.error("Firebase stream error:", error);
       });
+    }
+
+    function refreshPortalData() {
+      const icon = document.getElementById("refreshBtnIcon");
+      if (icon) icon.classList.add("fa-spin");
+      showToast("Refreshing from Firebase...");
+
+      db.ref("surveillance_data").once("value").then(function(snapshot) {
+        if (icon) icon.classList.remove("fa-spin");
+        const res = snapshot.val();
+        if (res && res.data) {
+          applyPortalData(res);
+          showToast("Surveillance dataset refreshed!");
+        } else {
+          showToast("No records found in database.");
+        }
+      }).catch(function(err) {
+        if (icon) icon.classList.remove("fa-spin");
+        showToast("Error reading database: " + err.message);
+      });
+    }
+
+    function applyPortalData(res) {
+      datasetCache = res.data || [];
+      thresholdBaselines = res.baselines || {}; 
+      masterHealthCenters = res.dropdowns ? res.dropdowns.healthCenters : [];
+      
+      buildSelectorFromMap("selCenter", ["ALL HEALTH CENTERS"].concat(masterHealthCenters));
+      populateNavdpcpHealthCenters(masterHealthCenters);
+      populatePatientProfileFilterDropdowns();
+
+      const syncEl = document.getElementById("syncTimestamp");
+      if (syncEl && res.syncTime) {
+        syncEl.innerHTML = `<i class="fa-solid fa-circle text-success"></i> Live Firebase ` + res.syncTime;
+      }
+      
+      renderDashboardCategorizedSurveillance(datasetCache);
+      runFilterPipeline();
     }
 
     function loadCaseDurationData() {
