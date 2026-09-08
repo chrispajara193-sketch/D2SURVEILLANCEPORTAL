@@ -7,10 +7,6 @@
 // PASTE YOUR ACTUAL SPREADSHEET ID HERE
 const SPREADSHEET_ID = "1sUTII813loiUG-LD1j-JUgSHagmmKf82QhxU4-Kl5IA";
 
-// DRIVE FOLDER NAMES FOR ASSET STORAGE
-const DIRECTORY_PHOTO_FOLDER = "QC-DESU District 2 Directory Photos";
-const PDS_CIF_FOLDER = "QC-DESU District 2 Surveillance CIF-CRF Files";
-
 const DISTRICT_2_BARANGAYS = [
   "BAGONG SILANGAN",
   "BATASAN HILLS",
@@ -371,6 +367,10 @@ function processLogin(data) {
       const dbUser = String(rows[i][0] || '').trim().toLowerCase();
       const dbPass = String(rows[i][1] || '').trim();
       const dbStatus = String(rows[i][2] || '').trim().toLowerCase();
+      
+      // READ COLUMN D (User Level) AND COLUMN E (Designation)
+      const dbRole = String(rows[i][3] || 'HC_USER').trim().toUpperCase();
+      const dbDesignation = String(rows[i][4] || '').trim();
 
       if (dbUser === usernameInput) {
         if (dbStatus !== 'active' && dbStatus !== '') {
@@ -378,7 +378,13 @@ function processLogin(data) {
         }
 
         if (dbPass === passwordInput) {
-          return { success: true, message: 'ACCESS_GRANTED: Authentication successful.', user: rows[i][0] };
+          return { 
+            success: true, 
+            message: 'ACCESS_GRANTED: Authentication successful.', 
+            user: rows[i][0],
+            role: dbRole,
+            designation: dbDesignation
+          };
         } else {
           return { success: false, message: 'SECURITY_ALERT: Incorrect password.' };
         }
