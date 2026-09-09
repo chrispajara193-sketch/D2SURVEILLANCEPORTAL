@@ -714,6 +714,10 @@ function getDashboardData() {
 // 5. D2 NAVDPCP 2026 REPORT
 // -------------------------------------------------------------------------
 
+// -------------------------------------------------------------------------
+// 5. D2 NAVDPCP 2026 REPORT (FIXED & ACCURATE)
+// -------------------------------------------------------------------------
+
 function getNavdpcpData(filters) {
   try {
     const ss = getSpreadsheet();
@@ -773,6 +777,9 @@ function getNavdpcpData(filters) {
     let idxDate = headers.indexOf("CESU DATE ADDED");
     if (idxDate === -1) idxDate = headers.findIndex(h => h.includes("CESU") || h.includes("DATE") || h.includes("ONSET"));
 
+    let idxSpecimen = headers.indexOf("DATE SPECIMEN COLLECTION");
+    if (idxSpecimen === -1) idxSpecimen = headers.findIndex(h => h.includes("SPECIMEN"));
+
     const targetBrgy = filters && filters.barangay ? filters.barangay.toUpperCase().trim() : "ALL BARANGAY";
     const targetHC = filters && filters.healthCenter ? filters.healthCenter.toUpperCase().trim() : "ALL HEALTH CENTERS";
     const targetRemarks = filters && filters.remarks ? filters.remarks.toUpperCase().trim() : "ALL REMARKS";
@@ -781,8 +788,26 @@ function getNavdpcpData(filters) {
     const startDateStr = filters && filters.startDate ? filters.startDate.trim() : "";
     const endDateStr = filters && filters.endDate ? filters.endDate.trim() : "";
 
-    let startMs = startDateStr ? new Date(startDateStr).getTime() : 0;
+    let startMs = startDateStr ? new Date(startDateStr + "T00:00:00").getTime() : 0;
     let endMs = endDateStr ? new Date(endDateStr + "T23:59:59").getTime() : Infinity;
+
+    // All 13 District 2 Health Centers pre-initialized so 0-case centers are not missing
+    const ALL_D2_CENTERS = [
+      "BAGONG SILANGAN HEALTH CENTER",
+      "BATASAN HILLS SUPER HEALTH CENTER",
+      "BATASAN HILLS ANNEX HEALTH CENTER",
+      "BETTY-GO HEALTH CENTER",
+      "COMMONWEALTH MAIN HEALTH CENTER",
+      "DOÑA NICASIA HEALTH CENTER",
+      "HOLY SPIRIT HEALTH CENTER",
+      "LUPANG PANGAKO HEALTH CENTER",
+      "NATIONAL GOVT HEALTH CENTER",
+      "PAYATAS A HEALTH CENTER",
+      "PAYATAS B HEALTH CENTER",
+      "PAYATAS SUPER HEALTH CENTER",
+      "REPUBLIC HEALTH CENTER",
+      "VETERANS HEALTH CENTER"
+    ];
 
     const caseFindingMap = {};
     const testingMap = {};
@@ -790,20 +815,34 @@ function getNavdpcpData(filters) {
     const clinicalOutcomeMap = {};
     const cesdMap = {};
 
+    ALL_D2_CENTERS.forEach(center => {
+      caseFindingMap[center] = { SUSPECT: 0, CONFIRM: 0, PROBABLE: 0, null: 0 };
+      testingMap[center] = {};
+      cesdMap[center] = { "PHSU ENDORSEMENT": 0, "HC DETECTED": 0 };
+    });
+
     for (let r = 1; r < values.length; r++) {
       const row = values[r];
       if (!row || row.join("").trim() === "") continue;
       
-      const hc = idxHC !== -1 && row[idxHC] ? String(row[idxHC]).trim() : "Unassigned Health Center";
+      const hc = idxHC !== -1 && row[idxHC] ? String(row[idxHC]).trim().toUpperCase() : "UNASSIGNED HEALTH CENTER";
       const brgy = idxBrgy !== -1 ? String(row[idxBrgy]).trim().toUpperCase() : "";
       const remarks = idxRemarks !== -1 ? String(row[idxRemarks]).trim().toUpperCase() : "";
       const disease = idxDisease !== -1 ? String(row[idxDisease]).trim().toUpperCase() : "";
       const rawClass = idxClass !== -1 ? String(row[idxClass]).trim().toUpperCase() : "";
 
-      if (remarks.includes("DELIST") || remarks.includes("NON-RES") || remarks.includes("DISCARD") || remarks.includes("DUPLICATE")) continue;
+      // Exclude discarded/delisted rows
+      if (
+        remarks.includes("DELIST") || remarks.includes("NON-RES") || 
+        remarks.includes("DISCARD") || remarks.includes("DUPLICATE") ||
+        rawClass.includes("DELIST") || rawClass.includes("DISCARD") ||
+        hc.includes("DELIST")
+      ) {
+        continue;
+      }
 
       if (targetBrgy !== "ALL BARANGAY" && !brgy.includes(targetBrgy)) continue;
-      if (targetHC !== "ALL HEALTH CENTERS" && hc.toUpperCase() !== targetHC) continue;
+      if (targetHC !== "ALL HEALTH CENTERS" && hc !== targetHC) continue;
       if (targetRemarks !== "ALL REMARKS" && !remarks.includes(targetRemarks)) continue;
       if (targetDisease !== "ALL DISEASES" && !disease.includes(targetDisease)) continue;
 
@@ -814,33 +853,53 @@ function getNavdpcpData(filters) {
         if (isNaN(rowTime) || rowTime < startMs || rowTime > endMs) continue;
       }
 
+      // Priority Fix: Check CONFIRM before SUSPECT
       let classification = "null";
-      if (rawClass.includes("SUSPECT")) classification = "SUSPECT";
-      else if (rawClass.includes("CONFIRM") || rawClass.includes("POS")) classification = "CONFIRM";
-      else if (rawClass.includes("PROBABLE")) classification = "PROBABLE";
+      if (rawClass.includes("CONFIRM") || rawClass.includes("POS") || rawClass === "+") {
+        classification = "CONFIRM";
+      } else if (rawClass.includes("PROBABLE")) {
+        classification = "PROBABLE";
+      } else if (rawClass.includes("SUSPECT")) {
+        classification = "SUSPECT";
+      }
 
       if (!caseFindingMap[hc]) caseFindingMap[hc] = { SUSPECT: 0, CONFIRM: 0, PROBABLE: 0, null: 0 };
       caseFindingMap[hc][classification] = (caseFindingMap[hc][classification] || 0) + 1;
 
-      let testType = idxTesting !== -1 && row[idxTesting] ? String(row[idxTesting]).trim() : "null";
-      if (!testType || testType === "") testType = "null";
+      // Table 2.1: Testing Types
+      let testType = idxTesting !== -1 && row[idxTesting] ? String(row[idxTesting]).trim() : "NO TEST";
+      if (!testType || testType === "") testType = "NO TEST";
       if (!testingMap[hc]) testingMap[hc] = {};
       testingMap[hc][testType] = (testingMap[hc][testType] || 0) + 1;
 
-      if (testType.toUpperCase().includes("PCR") || testType.toUpperCase().includes("RTPCR") || testType.toUpperCase().includes("POLYMERASE") || testType.toUpperCase().includes("SERUM") || testType.toUpperCase().includes("SWAB")) {
+      // KPI 2.2: Count if PCR, Serum, or a Specimen Date is documented
+      let hasSpecimenDate = idxSpecimen !== -1 && row[idxSpecimen] !== "" && row[idxSpecimen] !== null;
+      let testTypeUpper = testType.toUpperCase();
+      if (
+        testTypeUpper.includes("PCR") || testTypeUpper.includes("RTPCR") || 
+        testTypeUpper.includes("POLYMERASE") || testTypeUpper.includes("SERUM") || 
+        hasSpecimenDate
+      ) {
         confirmatoryCount++;
       }
 
-      let clinical = idxClinical !== -1 && row[idxClinical] ? String(row[idxClinical]).trim().toUpperCase() : "null";
-      let outcome = idxOutcome !== -1 && row[idxOutcome] ? String(row[idxOutcome]).trim().toUpperCase() : "null";
+      // Table 3 & 4: ONLY count CONFIRMED cases (Fixing the 9 vs 2 bug)
+      let clinical = idxClinical !== -1 && row[idxClinical] ? String(row[idxClinical]).trim().toUpperCase() : "UNSPECIFIED";
+      let outcome = idxOutcome !== -1 && row[idxOutcome] ? String(row[idxOutcome]).trim().toUpperCase() : "ALIVE";
       if (outcome.includes("ALIVE")) outcome = "ALIVE";
       else if (outcome.includes("DIE") || outcome.includes("DEATH")) outcome = "DIED";
-      else outcome = "null";
+      else outcome = "ALIVE";
 
-      const clinKey = `${hc}||${clinical}`;
-      if (!clinicalOutcomeMap[clinKey]) clinicalOutcomeMap[clinKey] = { hc: hc, clinical: clinical, ALIVE: 0, DIED: 0, null: 0 };
-      clinicalOutcomeMap[clinKey][outcome]++;
+      // Table 3 strictly for CONFIRMED dengue cases
+      if (classification === "CONFIRM") {
+        const clinKey = `${hc}||${clinical}`;
+        if (!clinicalOutcomeMap[clinKey]) {
+          clinicalOutcomeMap[clinKey] = { hc: hc, clinical: clinical, ALIVE: 0, DIED: 0, null: 0 };
+        }
+        clinicalOutcomeMap[clinKey][outcome]++;
+      }
 
+      // Table *4: Investigation Source
       let category = idxCategory !== -1 && row[idxCategory] ? String(row[idxCategory]).trim().toUpperCase() : "HC DETECTED";
       if (category.includes("PHSU")) category = "PHSU ENDORSEMENT";
       else category = "HC DETECTED";
