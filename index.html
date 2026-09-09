@@ -1705,7 +1705,7 @@
         <i class="fa-solid fa-database me-2"></i>PATIENT PROFILE
       </div>
       <div class="nav-item protected-nav" id="tab-links" onclick="switchTab('links')">
-        <i class="fa-solid fa-folder-tree me-2"></i>LINKS & REPOSITORY
+          <i class="fa-solid fa-file-lines me-2"></i>FORMS
       </div>
       <div class="nav-item protected-nav" id="tab-directory" onclick="switchTab('directory')">
         <i class="fa-solid fa-address-book me-2"></i>DIRECTORY
@@ -1852,31 +1852,30 @@
         </div>
       </div>
 
-      <!-- VIEW: IN-PORTAL LINKS & DOCUMENT REPOSITORY (ZERO EXTERNAL REDIRECTS) -->
-      <div id="view-links" class="view-container main-view-wrapper" style="display: none;">
-        <div class="p-3 text-center text-white fw-bold fs-4 rounded-4 mb-3 shadow-sm" style="background: linear-gradient(135deg, rgba(67, 132, 150, 0.9) 0%, rgba(45, 95, 110, 0.95) 100%); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border);">
-          <i class="fa-solid fa-folder-open me-2"></i>DISTRICT 2 SURVEILLANCE DOCUMENT REPOSITORY
-        </div>
+      <!-- VIEW: IN-PORTAL FORMS & REPOSITORY -->
+<div id="view-links" class="view-container main-view-wrapper" style="display: none;">
+  <div class="p-3 text-center text-white fw-bold fs-4 rounded-4 mb-3 shadow-sm" style="background: linear-gradient(135deg, rgba(67, 132, 150, 0.9) 0%, rgba(45, 95, 110, 0.95) 100%); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border);">
+    <i class="fa-solid fa-folder-open me-2"></i>DISTRICT 2 SURVEILLANCE OFFICIAL FORMS
+  </div>
 
-        <div class="portal-card mb-4">
-          <!-- SEARCH & CATEGORY FILTER BAR -->
-          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-            <div class="d-flex flex-wrap align-items-center gap-2" id="repoCategoryPills">
-              <div class="repo-category-pill active" onclick="filterRepoCategory('ALL', event)"><i class="fa-solid fa-layer-group"></i> All Documents</div>
-              <div class="repo-category-pill" onclick="filterRepoCategory('FORMS', event)"><i class="fa-solid fa-file-medical"></i> Case Forms (CIF/CRF)</div>
-              <div class="repo-category-pill" onclick="filterRepoCategory('REPORTS', event)"><i class="fa-solid fa-chart-line"></i> Morbidity Reports</div>
-              <div class="repo-category-pill" onclick="filterRepoCategory('GUIDELINES', event)"><i class="fa-solid fa-book-bookmark"></i> PIDSR Guidelines & SOPs</div>
-              <div class="repo-category-pill" onclick="filterRepoCategory('TEMPLATES', event)"><i class="fa-solid fa-file-excel"></i> Reporting Templates</div>
-            </div>
-            <div style="min-width: 260px; max-width: 320px; width: 100%;">
-              <input type="text" id="repoSearchInput" oninput="renderRepositoryFiles()" class="repo-search-input" placeholder="Search forms, guidelines, manuals...">
-            </div>
-          </div>
-
-          <!-- DYNAMIC GRID OF ALL 20+ OFFICIAL SURVEILLANCE DOCUMENTS -->
-          <div class="row g-3" id="repoFilesGrid"></div>
-        </div>
+  <div class="portal-card mb-4">
+    <!-- SEARCH & CATEGORY FILTER BAR -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+      <div class="d-flex flex-wrap align-items-center gap-2" id="repoCategoryPills">
+        <div class="repo-category-pill active" onclick="filterRepoCategory('ALL', event)"><i class="fa-solid fa-layer-group"></i> All Forms</div>
+        <div class="repo-category-pill" onclick="filterRepoCategory('EPIFORMS', event)"><i class="fa-solid fa-file-word"></i> EpiForms (2026)</div>
+        <div class="repo-category-pill" onclick="filterRepoCategory('LAB_FORMS', event)"><i class="fa-solid fa-flask-vial"></i> Lab & Hospital (SACCL, NKTI)</div>
+        <div class="repo-category-pill" onclick="filterRepoCategory('NOTIFIABLE', event)"><i class="fa-solid fa-shield-virus"></i> Notifiable Disease Forms</div>
       </div>
+      <div style="min-width: 260px; max-width: 320px; width: 100%;">
+        <input type="text" id="repoSearchInput" oninput="renderRepositoryFiles()" class="repo-search-input" placeholder="Search forms by disease or title...">
+      </div>
+    </div>
+
+    <!-- DYNAMIC GRID OF ALL FORMS -->
+    <div class="row g-3" id="repoFilesGrid"></div>
+  </div>
+</div>
 
       <!-- IN-APP DOCUMENT PREVIEW & PDF PRINT MODAL -->
       <div id="docPreviewModal">
@@ -2987,38 +2986,474 @@ if (!firebase.apps.length) {
     let directoryStaffList = [];
 
     /* =========================================================
-       IN-PORTAL OFFICIAL DOCUMENTS & CASE INVESTIGATION FORMS
-    ========================================================= */
-    let currentRepoCategory = 'ALL';
-    const PORTAL_DOCUMENTS = [
-      { id: "cif-dengue", title: "Dengue Clinical Case Investigation Form (CRF)", category: "FORMS", disease: "DENGUE", version: "2026 Official", desc: "Mandatory Case Investigation Form for suspected, probable, and confirmed Dengue cases." },
-      { id: "cif-measles", title: "Measles-Rubella Case Investigation Form (CIF)", category: "FORMS", disease: "MEASLES", version: "2026 Official", desc: "Required epidemiological CIF for acute fever and maculopapular rash investigations." },
-      { id: "cif-pertussis", title: "Pertussis Case Investigation Form (CIF)", category: "FORMS", disease: "PERTUSSIS", version: "2026 Official", desc: "Standard investigation tool for pertussis-like coughing illnesses and contacts." },
-      { id: "cif-afp", title: "Acute Flaccid Paralysis (AFP) Case Form", category: "FORMS", disease: "AFP", version: "2026 Official", desc: "National Polio/AFP surveillance form including 60-day follow-up examination logs." },
-      { id: "cif-diphtheria", title: "Diphtheria Case Investigation Form (CIF)", category: "FORMS", disease: "DIPHTHERIA", version: "2026 Official", desc: "Investigation tool for pseudo-membrane pharyngitis and close contact tracing." },
-      { id: "cif-leptospirosis", title: "Leptospirosis Case Investigation Form (CIF)", category: "FORMS", disease: "LEPTOSPIROSIS", version: "2026 Official", desc: "Surveillance form for flood immersion history, MAT testing, and prophylaxis logs." },
-      { id: "cif-cholera", title: "Cholera / Acute Bloody Diarrhea (ABD) CIF", category: "FORMS", disease: "CHOLERA / ABD", version: "2026 Official", desc: "Water-borne outbreak case finding tool with water source mapping parameters." },
-      { id: "cif-typhoid", title: "Typhoid & Paratyphoid Fever Investigation Form", category: "FORMS", disease: "TYPHOID", version: "2026 Official", desc: "Food handler exposure history and typhidot / blood culture verification form." },
-      { id: "cif-chikungunya", title: "Chikungunya Case Investigation Form (CIF)", category: "FORMS", disease: "CHIKUNGUNYA", version: "2026 Official", desc: "Vector-borne acute arthralgia and febrile illness epidemiological record." },
-      { id: "cif-rabies", title: "Rabies & Animal Bite Exposure Investigation Form", category: "FORMS", disease: "RABIES", version: "2026 Official", desc: "Category III animal bite incident record, post-exposure prophylaxis registry." },
-      { id: "cif-respiratory", title: "ILI & SARI Pan-Respiratory Surveillance Form", category: "FORMS", disease: "ILI / SARI", version: "2026 Official", desc: "Combined Influenza-Like Illness & Severe Acute Respiratory Infection tracking tool." },
-      { id: "cif-covid19", title: "COVID-19 Case Investigation Form (CIF 2026)", category: "FORMS", disease: "COVID-19", version: "2026 Official", desc: "Standard QC-CESD SARS-CoV-2 clinical profile and vaccination status form." },
-      { id: "cif-meningo", title: "Meningococcemia & Bacterial Meningitis CIF", category: "FORMS", disease: "MENINGITIS", version: "2026 Official", desc: "Urgent outbreak alert CIF for petechial rash and CSF analysis findings." },
-      { id: "cif-hfmd", title: "Hand, Foot, and Mouth Disease (HFMD) Case Form", category: "FORMS", disease: "HFMD", version: "2026 Official", desc: "Daycare and school-based cluster investigation record for Enterovirus cases." },
+   OFFICIAL FORMS MAPPING (MATCHING ./assets/links/ FOLDERS)
+========================================================= */
+let currentRepoCategory = 'ALL';
+const PORTAL_DOCUMENTS = [
+  // ---------------------------------------------------------
+  // 1. EPIFORMS (2026) - WORD & EXCEL TEMPLATES
+  // ---------------------------------------------------------
+  { 
+    title: "Diphtheria Case Investigation EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "DIPHTHERIA", 
+    path: "./assets/links/EpiForms (2026)/Diphtheria.docx",
+    desc: "Official Case Investigation EpiForm for suspect & confirmed Diphtheria."
+  },
+  { 
+    title: "Food and Waterborne Diseases (FWBD) EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "FWBD", 
+    path: "./assets/links/EpiForms (2026)/FWBD.docx",
+    desc: "Comprehensive EpiForm for cholera, acute gastroenteritis, and foodborne illnesses."
+  },
+  { 
+    title: "Hand, Foot, and Mouth Disease (HFMD) EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "HFMD", 
+    path: "./assets/links/EpiForms (2026)/HFMD.docx",
+    desc: "Case investigation tool for Enterovirus and pediatric HFMD clusters."
+  },
+  { 
+    title: "KoboToolbox Digital EpiForm Template", 
+    category: "EPIFORMS", 
+    type: "XLSX", 
+    disease: "SURVEILLANCE TOOL", 
+    path: "./assets/links/EpiForms (2026)/kobotool_epiform.xlsx",
+    desc: "Excel standard structure for KoboToolbox digital mobile field collection."
+  },
+  { 
+    title: "Leptospirosis Case EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "LEPTOSPIROSIS", 
+    path: "./assets/links/EpiForms (2026)/Leptospirosis.docx",
+    desc: "Clinical investigation form including flood immersion history & prophylaxis."
+  },
+  { 
+    title: "Measles-Rubella Case Investigation EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "MEASLES", 
+    path: "./assets/links/EpiForms (2026)/Measles_Rubella.docx",
+    desc: "Standard form for fever and maculopapular rash investigation."
+  },
+  { 
+    title: "Meningococcemia & Bacterial Meningitis EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "MENINGITIS", 
+    path: "./assets/links/EpiForms (2026)/Meningococcemia.docx",
+    desc: "Urgent outbreak alert case form for petechial rash and CSF findings."
+  },
+  { 
+    title: "Mpox (Monkeypox) Case Investigation EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "MPOX", 
+    path: "./assets/links/EpiForms (2026)/Mpox Epiform.docx",
+    desc: "Specialized clinical and rash characterization form for suspected Mpox cases."
+  },
+  { 
+    title: "Neonatal Tetanus Investigation EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "TETANUS", 
+    path: "./assets/links/EpiForms (2026)/Neonatal.docx",
+    desc: "Surveillance form for neonatal tetanus cases and cord care history."
+  },
+  { 
+    title: "Non-Neonatal Tetanus Investigation EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "TETANUS", 
+    path: "./assets/links/EpiForms (2026)/Non Neonatal.docx",
+    desc: "Adult and pediatric wound exposure tetanus surveillance tool."
+  },
+  { 
+    title: "Pan-Respiratory Surveillance EpiForm (ILI/SARI)", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "RESPIRATORY", 
+    path: "./assets/links/EpiForms (2026)/Panrespi EpiForm.docx",
+    desc: "Pan-respiratory acute coughing and severe respiratory distress log."
+  },
+  { 
+    title: "Pertussis Case Investigation EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "PERTUSSIS", 
+    path: "./assets/links/EpiForms (2026)/Pertussis.docx",
+    desc: "Investigation tool for paroxysmal whooping cough cases and contacts."
+  },
+  { 
+    title: "Rabies & Animal Exposure EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "RABIES", 
+    path: "./assets/links/EpiForms (2026)/Rabies.docx",
+    desc: "Animal bite incident, biting animal status, and PEP registry."
+  },
+  { 
+    title: "Vector-Borne Diseases (Dengue/ChikV) EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "VECTOR-BORNE", 
+    path: "./assets/links/EpiForms (2026)/Vectorborne.docx",
+    desc: "Comprehensive investigation form for Dengue and Chikungunya."
+  },
 
-      // REPORTS
-      { id: "rep-d2-summary", title: "District 2 Weekly Morbidity Surveillance Master Register", category: "REPORTS", disease: "ALL DISEASES", version: "MW 1 - 52 (2026)", desc: "Aggregated surveillance compilation register for all 13 District 2 Health Centers." },
-      { id: "rep-d2-feedback", title: "Surveillance Daily Feedback & Case Duration Master Log", category: "REPORTS", disease: "OPERATIONS", version: "Daily Sync", desc: "24-48hr case validation timestamp registry and investigator completion monitor." },
+  // ---------------------------------------------------------
+  // 2. FORMS (SACCL, NKTI, ETC) - LAB & SPECIALIZED FORMS
+  // ---------------------------------------------------------
+  { 
+    title: "Fillable Laboratory Request Form (PLED/RL)", 
+    category: "LAB_FORMS", 
+    type: "PDF", 
+    disease: "LABORATORY", 
+    path: "./assets/links/FORMS(SACCL,NKTI,ETC)/Fillable Laboratory Request Form-PLEASE DOWNLOAD_LRD-QM-FM-04_5feb2026.pdf",
+    desc: "Standard fillable referral form for diagnostic specimen submission."
+  },
+  { 
+    title: "F-SACCL-046 Molecular Diagnostics Request Form", 
+    category: "LAB_FORMS", 
+    type: "PDF", 
+    disease: "SACCL MOLECULAR", 
+    path: "./assets/links/FORMS(SACCL,NKTI,ETC)/F-SACCL-046 MOLECULAR DIAGNOSTICS REQUEST FORM.pdf",
+    desc: "Official SACCL National Reference Laboratory molecular PCR referral."
+  },
+  { 
+    title: "Hepatitis Care Form (HEPATI_1)", 
+    category: "LAB_FORMS", 
+    type: "PDF", 
+    disease: "HEPATITIS", 
+    path: "./assets/links/FORMS(SACCL,NKTI,ETC)/HEPATI_1 (Care Form).pdf",
+    desc: "Patient care and management tracking form for viral hepatitis."
+  },
+  { 
+    title: "COVID-19 Mandatory Isolation Order (v10)", 
+    category: "LAB_FORMS", 
+    type: "PDF", 
+    disease: "COVID-19", 
+    path: "./assets/links/FORMS(SACCL,NKTI,ETC)/Isolation-Order-Covid19_v10-with-isolation.pdf",
+    desc: "Official Quezon City Health Department legal quarantine and isolation order."
+  },
+  { 
+    title: "STICH Surveillance Document", 
+    category: "LAB_FORMS", 
+    type: "PUB", 
+    disease: "SPECIALIZED", 
+    path: "./assets/links/FORMS(SACCL,NKTI,ETC)/STICH.pub",
+    desc: "Specialized clinical report and guidelines file (Publisher format)."
+  },
+  { 
+    title: "Viral Hepatitis B Case Report Form", 
+    category: "LAB_FORMS", 
+    type: "PDF", 
+    disease: "HEPATITIS B", 
+    path: "./assets/links/FORMS(SACCL,NKTI,ETC)/VIRAL-HEPATITIS-B-CASE-REPORT-FORM-revised.pdf",
+    desc: "Official case report registry form for Acute & Chronic Hepatitis B."
+  },
 
-      // GUIDELINES & SOPS
-      { id: "gui-pidsr-manual", title: "DOH-PIDSR National Disease Surveillance Manual & Protocols", category: "GUIDELINES", disease: "MANUAL", version: "2026 Edition", desc: "Complete standard operating procedures, case definitions, and legal mandates (RA 11332)." },
-      { id: "gui-specimen-sop", title: "Specimen Collection, Cold-Chain Transport & Logistics SOP", category: "GUIDELINES", disease: "LABORATORY", version: "Jan 2026", desc: "Standard operating procedure for serum, swabs, stool, and CSF transport protocols." },
-      { id: "gui-cluster-sop", title: "District 2 200m Spatial Buffer Outbreak Response Guidelines", category: "GUIDELINES", disease: "FIELD RESPONSE", version: "Jan 2026", desc: "Geospatial disease cluster verification and targeted community intervention manual." },
+  // ---------------------------------------------------------
+  // 3. NOTIFIABLE DISEASES FORMS (CRF / CIF / EPIQUESTIONNAIRES)
+  // ---------------------------------------------------------
+  
+  // === FOOD AND WATERBORNE DISEASES (FWBD) ===
+  { 
+    title: "Acute Bloody Diarrhea Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "CHOLERA / ABD", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/FWBD/ABD/CRF/Acute Bloody Diarrhea CRF.pdf",
+    desc: "Official case report form for Acute Bloody Diarrhea surveillance."
+  },
+  { 
+    title: "Acute Viral Hepatitis Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "HEPA", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/FWBD/ACUTE VIRAL HEPATITIS/CRF/Acute Viral Hepatitis CRF.pdf",
+    desc: "Official case report form for Acute Viral Hepatitis surveillance."
+  },
+  { 
+    title: "Cholera Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "CHOLERA", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/FWBD/CHOLERA/CRF/Cholera CRF.pdf",
+    desc: "Official case report form for Cholera surveillance."
+  },
+  { 
+    title: "Rotavirus Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "ROTAVIRUS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/FWBD/ROTAVIRUS/CRF/Rotavirus CRF - Printable.pdf",
+    desc: "Official case report form for Rotavirus surveillance."
+  },
+  { 
+    title: "Typhoid and Paratyphoid Fever Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "TYPHOID", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/FWBD/TYPHOID FEVER AND PARATYPHOID FEVER/CRF/Typhoid and Paratyphoid Fever CRF.pdf",
+    desc: "Official case report form for Typhoid and Paratyphoid Fever surveillance."
+  },
 
-      // TEMPLATES
-      { id: "tmp-hc-rapid", title: "Health Center 24-48hr Rapid Case Endorsement Template", category: "TEMPLATES", disease: "TEMPLATE", version: "2026 Digital", desc: "Standard submission template for Super Health Centers and Annex clinics urgent endorsements." },
-      { id: "tmp-school-cluster", title: "School & Institutional Absenteeism Investigation Tool", category: "TEMPLATES", disease: "TEMPLATE", version: "2026 Digital", desc: "Classroom outbreak and fever cluster school-based surveillance grid." }
-    ];
+  // === OTHER NOTIFIABLE DISEASES ===
+  { 
+    title: "Acute Meningitis-Encephalitis Surveillance (AMES) CRF", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "AMES", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/OTHER NOTIFIABLE DISEASES/AMES/CRF/ACUTE MENINGITIS-ENCEPHALITIS SURVEILLANCE CRF.pdf",
+    desc: "Official case report form for Acute Meningitis-Encephalitis surveillance."
+  },
+  { 
+    title: "Hand, Foot, and Mouth Disease (HFMD) CIF", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "HFMD", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/OTHER NOTIFIABLE DISEASES/HFMD/CIF/Hand Foot and Mouth Disease CIF.pdf",
+    desc: "Case Investigation Form for suspected and confirmed HFMD cases."
+  },
+  { 
+    title: "HFMD Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "HFMD", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/OTHER NOTIFIABLE DISEASES/HFMD/EPIQUESTIONNAIRE/HFMD.docx",
+    desc: "Detailed epidemiological investigation questionnaire for HFMD cases."
+  },
+  { 
+    title: "Meningococcal Disease CIF (RA 11332)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "MENINGITIS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/OTHER NOTIFIABLE DISEASES/MENINGOCOCEMIA/CIF/Meningococcal Disease RA-11332-FORMS.pdf",
+    desc: "Official Case Investigation Form for Meningococcal Disease under RA 11332."
+  },
+  { 
+    title: "Meningococcemia Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "MENINGITIS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/OTHER NOTIFIABLE DISEASES/MENINGOCOCEMIA/EPIQUESTIONNAIRRE/Meningococcemia.docx",
+    desc: "Epidemiological questionnaire for Meningococcemia contact tracing."
+  },
+  { 
+    title: "Mpox (Monkeypox) Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "MPOX", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/OTHER NOTIFIABLE DISEASES/MPOX/EPIQUESTIONNAIRRE/Mpox Epiform.docx",
+    desc: "Specialized clinical evaluation and exposure history questionnaire for Mpox."
+  },
+
+  // === PAN-RESPIRATORY ILLNESS ===
+  { 
+    title: "Pan-Respiratory Illness General EpiForm", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "RESPIRATORY", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/PAN-RESPIRATORY ILLNESS/Panrespi EpiForm.docx",
+    desc: "Pan-respiratory acute infection and clinical assessment form."
+  },
+  { 
+    title: "COVID-19 Case Investigation Form (CiF V.9)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "COVID-19", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/PAN-RESPIRATORY ILLNESS/COVID-19/CIF/Covid CiF V.9.pdf",
+    desc: "Standard Version 9 COVID-19 epidemiological investigation form."
+  },
+  { 
+    title: "Influenza-Like Illness (ILI) CRF", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "ILI", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/PAN-RESPIRATORY ILLNESS/INFLUENZA-LIKE ILLNESS/CRF/Influenza-Like Illness CRF.pdf",
+    desc: "Official Case Report Form for outpatient Influenza-Like Illness surveillance."
+  },
+  { 
+    title: "Severe Acute Respiratory Syndrome (SARI) CIF", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "SARI", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/PAN-RESPIRATORY ILLNESS/SEVERE ACUTE RESPIRATORY INFECTION/CIF/Severe Acute Respiratory Syndrome CIF.pdf",
+    desc: "Inpatient Case Investigation Form for Severe Acute Respiratory Infection."
+  },
+
+  // === VECTOR-BORNE DISEASES ===
+  { 
+    title: "Chikungunya Virus CIF", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "CHIKUNGUNYA", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VECTOR-BORNE DISEASES/CHIKUNGUNYA/CIF/Chikungunya Virus CIF.pdf",
+    desc: "Case Investigation Form for Chikungunya fever and acute arthralgia."
+  },
+  { 
+    title: "Dengue Clinical Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "DENGUE", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VECTOR-BORNE DISEASES/DENGUE/CRF/Dengue CRF - Printable.pdf",
+    desc: "Printable official Case Report Form for Dengue clinical surveillance."
+  },
+  { 
+    title: "Dengue Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "DENGUE", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VECTOR-BORNE DISEASES/DENGUE/EPI-QUESTIONNAIRRE/DENGUE EPI QUESTIONNAIRE.pdf",
+    desc: "Comprehensive field epidemiological questionnaire for Dengue cases."
+  },
+  { 
+    title: "Malaria Case Investigation Form (CIF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "MALARIA", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VECTOR-BORNE DISEASES/MALARIA/CIF/Malaria CIF.pdf",
+    desc: "National malaria surveillance and smear/RDT verification form."
+  },
+  { 
+    title: "Zika Virus CIF", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "ZIKA", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VECTOR-BORNE DISEASES/ZIKA/CIF/Zika Virus cif.pdf",
+    desc: "Surveillance form for Zika virus infection, rash, and pregnancy tracking."
+  },
+
+  // === VACCINE-PREVENTABLE DISEASES (VPD) ===
+  { 
+    title: "Acute Flaccid Paralysis (AFP) CIF", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "AFP", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/AFP/CIF/Acute Flaccid Paralysis CIF.pdf",
+    desc: "Official Polio/AFP surveillance form for sudden onset flaccid weakness."
+  },
+  { 
+    title: "AFP 60-Days Follow-Up Examination Form", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "AFP", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/AFP/AFP-60-DAYS-FOLLOW-UP-FORM.pdf",
+    desc: "Mandatory 60-day follow-up neurological evaluation record for AFP cases."
+  },
+  { 
+    title: "Diphtheria Case Investigation Form (CIF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "DIPHTHERIA", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/DIPHTHERIA/CIF/DIPHTHERIA CIF.pdf",
+    desc: "Case Investigation Form for pseudomembranous pharyngitis and close contacts."
+  },
+  { 
+    title: "Measles CIF (RA 11332 Revised Mandatory Reporting)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "MEASLES", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/MEASLES/CIF/Measles CIF - RA-11332-IRR-Revised-Mandatory-Reporting.pdf",
+    desc: "Revised mandatory reporting Case Investigation Form for Measles."
+  },
+  { 
+    title: "Measles & Rubella Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "MEASLES", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/MEASLES/EPI QUESTIONNAIRRE/MEASLES_RUBELLA EPI QUESTIONNAIRRE.pdf",
+    desc: "Field epidemiological questionnaire for acute fever and maculopapular rash."
+  },
+  { 
+    title: "Rubella Case Investigation Form (RA 11332)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "RUBELLA", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/RUBELLA/CIF/MEASLES RUBELLA RA-11332-FORMS.pdf",
+    desc: "Official surveillance and congenital rubella syndrome investigation tool."
+  },
+  { 
+    title: "Neonatal Tetanus Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "TETANUS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/NEONATAL TETANUS/EPIQUESTIONNAIRRE/Neonatal.docx",
+    desc: "Epidemiological questionnaire for neonatal tetanus and maternal TT status."
+  },
+  { 
+    title: "Non-Neonatal Tetanus Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "TETANUS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/NON-NEONATAL TETANUS/CRF/Non-neonatal Tetanus CRF.pdf",
+    desc: "Official Case Report Form for adult and child non-neonatal tetanus."
+  },
+  { 
+    title: "Non-Neonatal Tetanus Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "TETANUS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/NON-NEONATAL TETANUS/EPIQUESTIONNAIRE/Non Neonatal.docx",
+    desc: "Wound assessment, exposure, and booster history investigation tool."
+  },
+  { 
+    title: "Pertussis Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "PERTUSSIS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/PERTUSSIS/CRF/Pertussis CRF.pdf",
+    desc: "Official Case Report Form for whooping cough case registry."
+  },
+  { 
+    title: "Pertussis Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "PERTUSSIS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/PERTUSSIS/EPIQUESTIONNAIRE/Pertussis.docx",
+    desc: "Detailed field questionnaire for pertussis contacts and antibiotic prophylaxis."
+  },
+
+  // === ZOONOTIC DISEASES ===
+  { 
+    title: "Leptospirosis Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "LEPTOSPIROSIS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/ZOONOTIC_/LEPTOSPIROSIS/CRF/Leptospirosis CRF.pdf",
+    desc: "Official Case Report Form for Leptospirosis surveillance."
+  },
+  { 
+    title: "Leptospirosis Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "LEPTOSPIROSIS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/ZOONOTIC_/LEPTOSPIROSIS/EPIQUESTIONNAIRRE/Leptospirosis.docx",
+    desc: "Flood exposure, occupation, and MAT laboratory testing questionnaire."
+  },
+  { 
+    title: "Rabies Case Investigation Form (CIF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "RABIES", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/ZOONOTIC_/RABIES/CIF/RABIES CIF.pdf",
+    desc: "Official Case Investigation Form for human rabies and animal bite cases."
+  },
+  { 
+    title: "Rabies Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "RABIES", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/ZOONOTIC_/RABIES/EPIQUESTIONNAIRRE/Rabies.docx",
+    desc: "Detailed animal exposure, biting dog status, and post-exposure prophylaxis record."
+  }
+]; 
 
     function filterRepoCategory(cat, evt) {
       currentRepoCategory = cat;
@@ -3029,58 +3464,78 @@ if (!firebase.apps.length) {
     }
 
     function renderRepositoryFiles() {
-      const grid = document.getElementById("repoFilesGrid");
-      const searchInput = document.getElementById("repoSearchInput");
-      if (!grid) return;
+  const grid = document.getElementById("repoFilesGrid");
+  const searchInput = document.getElementById("repoSearchInput");
+  if (!grid) return;
 
-      const searchTerm = (searchInput ? searchInput.value : "").toLowerCase().trim();
+  const searchTerm = (searchInput ? searchInput.value : "").toLowerCase().trim();
 
-      const filtered = PORTAL_DOCUMENTS.filter(f => {
-        const matchesCategory = (currentRepoCategory === 'ALL' || f.category === currentRepoCategory);
-        const matchesSearch = !searchTerm || f.title.toLowerCase().includes(searchTerm) || f.desc.toLowerCase().includes(searchTerm) || f.disease.toLowerCase().includes(searchTerm);
-        return matchesCategory && matchesSearch;
-      });
+  const filtered = PORTAL_DOCUMENTS.filter(f => {
+    const matchesCategory = (currentRepoCategory === 'ALL' || f.category === currentRepoCategory);
+    const matchesSearch = !searchTerm || 
+                          f.title.toLowerCase().includes(searchTerm) || 
+                          f.desc.toLowerCase().includes(searchTerm) || 
+                          f.disease.toLowerCase().includes(searchTerm);
+    return matchesCategory && matchesSearch;
+  });
 
-      if (filtered.length === 0) {
-        grid.innerHTML = `<div class="col-12 text-center py-5 text-muted">No documents match your filter.</div>`;
-        return;
-      }
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="col-12 text-center py-5 text-muted">No forms match your search or filter.</div>`;
+    return;
+  }
 
-      let html = "";
-      filtered.forEach(f => {
-        let iconClass = "icon-pdf";
-        let iconFa = "fa-file-pdf";
-        if (f.category === "REPORTS") { iconClass = "icon-sheet"; iconFa = "fa-file-excel"; }
-        else if (f.category === "GUIDELINES") { iconClass = "icon-doc"; iconFa = "fa-book-bookmark"; }
-        else if (f.category === "TEMPLATES") { iconClass = "icon-form"; iconFa = "fa-file-signature"; }
+  let html = "";
+  filtered.forEach(f => {
+    // Determine icon and color based on file type
+    let iconClass = "icon-doc";
+    let iconFa = "fa-file-word";
+    let btnText = "Download Form";
+    let btnIcon = "fa-download";
 
-        html += `
-          <div class="col-12 col-md-6 col-xl-6">
-            <div class="repo-file-card">
-              <div class="d-flex align-items-center gap-3" style="min-width: 0; flex-grow: 1;">
-                <div class="repo-file-icon ${iconClass}">
-                  <i class="fa-solid ${iconFa}"></i>
-                </div>
-                <div style="min-width: 0;">
-                  <h6 class="fw-bold mb-1 text-truncate" style="font-size: 13px; color: var(--text-primary);" title="${f.title}">${f.title}</h6>
-                  <p class="small text-muted mb-1 text-truncate" style="font-size: 11px;">${f.desc}</p>
-                  <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-primary-subtle text-primary border" style="font-size: 9.5px;">${f.disease}</span>
-                    <span class="badge bg-secondary-subtle text-secondary border font-monospace" style="font-size: 9.5px;">${f.version}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                <button type="button" class="repo-action-btn" onclick="openOfficialForm('${f.id}')" title="Open and Fill Form">
-                  <i class="fa-solid fa-file-pen"></i> Open Form
-                </button>
+    if (f.type === "PDF") {
+      iconClass = "icon-pdf";
+      iconFa = "fa-file-pdf";
+      btnText = "Open / Download";
+      btnIcon = "fa-arrow-up-right-from-square";
+    } else if (f.type === "XLSX") {
+      iconClass = "icon-sheet";
+      iconFa = "fa-file-excel";
+      btnText = "Download Excel";
+      btnIcon = "fa-file-excel";
+    } else if (f.type === "PUB") {
+      iconClass = "icon-form";
+      iconFa = "fa-file-lines";
+      btnText = "Download File";
+      btnIcon = "fa-download";
+    }
+
+    html += `
+      <div class="col-12 col-md-6 col-xl-6">
+        <div class="repo-file-card">
+          <div class="d-flex align-items-center gap-3" style="min-width: 0; flex-grow: 1;">
+            <div class="repo-file-icon ${iconClass}">
+              <i class="fa-solid ${iconFa}"></i>
+            </div>
+            <div style="min-width: 0;">
+              <h6 class="fw-bold mb-1 text-truncate" style="font-size: 13px; color: var(--text-primary);" title="${f.title}">${f.title}</h6>
+              <p class="small text-muted mb-1 text-truncate" style="font-size: 11px;">${f.desc}</p>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary-subtle text-primary border" style="font-size: 9.5px;">${f.disease}</span>
+                <span class="badge bg-secondary-subtle text-secondary border font-monospace" style="font-size: 9.5px;">${f.type}</span>
               </div>
             </div>
           </div>
-        `;
-      });
-      grid.innerHTML = html;
-    }
+          <div class="d-flex align-items-center gap-2 flex-shrink-0">
+            <a href="${encodeURI(f.path)}" download target="_blank" class="repo-action-btn text-decoration-none" title="Download ${f.title}">
+              <i class="fa-solid ${btnIcon}"></i> ${btnText}
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  grid.innerHTML = html;
+}
 
     function openOfficialForm(docId) {
       const doc = PORTAL_DOCUMENTS.find(d => d.id === docId) || PORTAL_DOCUMENTS[0];
@@ -3356,61 +3811,6 @@ if (!firebase.apps.length) {
       const activeBadge = document.getElementById("dashboardActiveDiseaseBadge");
       if (activeBadge) activeBadge.innerText = selectedActiveDisease;
       runFilterPipeline();
-    }
-
-    function refreshPortalData() {
-      const icon = document.getElementById("refreshBtnIcon");
-      if (icon) icon.classList.add("fa-spin");
-      showToast("Syncing with District 2 Registry...");
-
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run
-          .withSuccessHandler(function(res) {
-            if (icon) icon.classList.remove("fa-spin");
-            if (!res) return;
-            datasetCache = res.data || [];
-            thresholdBaselines = res.baselines || {}; 
-            masterHealthCenters = res.dropdowns ? res.dropdowns.healthCenters : [];
-            
-            buildSelectorFromMap("selCenter", ["ALL HEALTH CENTERS"].concat(masterHealthCenters));
-            populateNavdpcpHealthCenters(masterHealthCenters);
-            populatePatientProfileFilterDropdowns();
-
-            const syncEl = document.getElementById("syncTimestamp");
-            if (syncEl && res.syncTime) syncEl.innerHTML = `<i class="fa-solid fa-circle"></i> Synced ` + res.syncTime;
-            
-            renderDashboardCategorizedSurveillance(datasetCache);
-            runFilterPipeline();
-
-            if (isAuthenticated) {
-              loadDirectoryData();
-              loadCaseDurationData();
-            const isRestrictedUser = (currentUserRole === "RESTRICTED") || 
-                               (currentUser && currentUser.trim().toLowerCase() === 'qchealthd2@quezoncity.gov.ph');
-            if (!isRestrictedUser) {
-               loadNavdpcpData();
-               loadMasterRecords();
-             }
-            } 
-            showToast("Surveillance dataset updated successfully!");
-          })
-          .withFailureHandler(function(err) {
-            if (icon) icon.classList.remove("fa-spin");
-            showToast("Sync error: " + (err ? err.message : "Failed to fetch data"));
-          })
-          .getMetricsData();
-      } else {
-        setTimeout(function() {
-          if (icon) icon.classList.remove("fa-spin");
-          const now = new Date();
-          const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-          const syncEl = document.getElementById("syncTimestamp");
-          if (syncEl) syncEl.innerHTML = `<i class="fa-solid fa-circle"></i> Synced ` + timeStr;
-          renderDashboardCategorizedSurveillance(datasetCache);
-          runFilterPipeline();
-          showToast("Data refreshed.");
-        }, 500);
-      }
     }
 
     function loadDirectoryData() {
@@ -4056,40 +4456,62 @@ if (!firebase.apps.length) {
     /* =========================================================================
      * REAL-TIME DATA LOADER & REFRESH (FIREBASE STREAM)
      * ========================================================================= */
+    /* =========================================================================
+     * REAL-TIME DATA LOADER & REFRESH (FIREBASE + APPS SCRIPT FALLBACK)
+     * ========================================================================= */
     function loadDataServer() {
-      showToast("Connecting to live Firebase stream...");
+      showToast("Connecting to surveillance feed...");
 
+      // 1. Try real-time Firebase first
       db.ref("surveillance_data").on("value", function(snapshot) {
         const res = snapshot.val();
-        if (!res || !res.data) {
-          console.warn("No data in Firebase node 'surveillance_data'");
-          return;
+        if (res && res.data && res.data.length > 0) {
+          applyPortalData(res);
+        } else {
+          // 2. Fallback to Google Apps Script if Firebase has no records
+          fetchFromAppsScript();
         }
-
-        applyPortalData(res);
       }, function(error) {
-        console.error("Firebase stream error:", error);
+        console.warn("Firebase read error, falling back to Apps Script:", error);
+        fetchFromAppsScript();
       });
+    }
+
+    function fetchFromAppsScript(callback) {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res) applyPortalData(res);
+            if (callback) callback();
+          })
+          .withFailureHandler(function(err) {
+            showToast("Sync error: " + (err ? err.message : "Connection failed"));
+            if (callback) callback();
+          })
+          .getMetricsData();
+      }
     }
 
     function refreshPortalData() {
       const icon = document.getElementById("refreshBtnIcon");
       if (icon) icon.classList.add("fa-spin");
-      showToast("Refreshing from Firebase...");
+      showToast("Refreshing latest data...");
 
-      db.ref("surveillance_data").once("value").then(function(snapshot) {
+      fetchFromAppsScript(function() {
         if (icon) icon.classList.remove("fa-spin");
-        const res = snapshot.val();
-        if (res && res.data) {
-          applyPortalData(res);
-          showToast("Surveillance dataset refreshed!");
-        } else {
-          showToast("No records found in database.");
-        }
-      }).catch(function(err) {
-        if (icon) icon.classList.remove("fa-spin");
-        showToast("Error reading database: " + err.message);
+        showToast("Surveillance dataset updated!");
       });
+
+      if (isAuthenticated) {
+        loadDirectoryData();
+        loadCaseDurationData();
+        const isRestrictedUser = (currentUserRole === "RESTRICTED") || 
+                                 (currentUser && currentUser.trim().toLowerCase() === 'qchealthd2@quezoncity.gov.ph');
+        if (!isRestrictedUser) {
+          loadNavdpcpData();
+          loadMasterRecords();
+        }
+      }
     }
 
     function applyPortalData(res) {
@@ -4390,11 +4812,6 @@ if (!firebase.apps.length) {
       if (brgyData.epidemic) epidemicThresholdLine = brgyData.epidemic;
       if (brgyData.alert) alertThresholdLine = brgyData.alert;
      }
-
-      if (resolvedBaseline) {
-        if (resolvedBaseline.epidemic) epidemicThresholdLine = resolvedBaseline.epidemic;
-        if (resolvedBaseline.alert) alertThresholdLine = resolvedBaseline.alert;
-      }
 
       if (epiChartInstance !== null) epiChartInstance.destroy();
       const canvas = document.getElementById('epiCurveCanvas');
