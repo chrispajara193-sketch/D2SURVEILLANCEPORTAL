@@ -2542,8 +2542,17 @@
           <h5 class="fw-bold text-uppercase mb-3">I. CASE FINDING AND MANAGEMENT</h5>
           <div class="portal-table-wrapper">
             <table class="portal-table">
-              <thead><tr><th>HEALTH CENTER DESIGNATION</th><th>SUSPECT</th><th>CONFIRM</th><th>null</th><th>PROBABLE</th><th>Grand total</th></tr></thead>
-              <tbody id="navdpcpTable1Body"><tr><td colspan="6" class="text-center py-3 text-muted">Loading report...</td></tr></tbody>
+            <thead>
+              <tr>
+               <th>HEALTH CENTER DESIGNATION</th>
+               <th>SUSPECT</th>
+               <th>null</th>
+               <th>CONFIRM</th>
+               <th>PROBABLE</th>
+               <th>Grand total</th>
+              </tr>
+            </thead>              
+            <tbody id="navdpcpTable1Body"><tr><td colspan="6" class="text-center py-3 text-muted">Loading report...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -4682,14 +4691,23 @@ const PORTAL_DOCUMENTS = [
         let t1Html = "";
         if (data.table1 && data.table1.rows && data.table1.rows.length > 0) {
           data.table1.rows.forEach(r => {
-            t1Html += `<tr><td><strong>${r.hc}</strong></td><td>${r.suspect}</td><td>${r.confirm}</td><td>${r.nullVal}</td><td>${r.probable}</td><td><strong>${r.grandTotal}</strong></td></tr>`;
-          });
-          t1Html += `<tr class="fw-bold bg-light"><td>Grand total</td><td>${data.table1.totals.SUSPECT || 0}</td><td>${data.table1.totals.CONFIRM || 0}</td><td>${data.table1.totals.null || 0}</td><td>${data.table1.totals.PROBABLE || 0}</td><td>${data.table1.totals.grandTotal || 0}</td></tr>`;
-        } else {
-          t1Html = '<tr><td colspan="6" class="text-center py-3 text-muted">No records found.</td></tr>';
-        }
-        t1Body.innerHTML = t1Html;
-      }
+          t1Html += `<tr>
+            <td><strong>${r.hc}</strong></td>
+            <td>${r.suspect}</td>
+            <td>${r.nullVal}</td>
+            <td>${r.confirm}</td>
+            <td>${r.probable}</td>
+            <td><strong>${r.grandTotal}</strong></td>
+          </tr>`;
+        });
+        t1Html += `<tr class="fw-bold bg-light">
+          <td>Grand total</td>
+          <td>${data.table1.totals.SUSPECT || 0}</td>
+          <td>${data.table1.totals.nullVal || data.table1.totals.null || 0}</td>
+          <td>${data.table1.totals.CONFIRM || 0}</td>
+          <td>${data.table1.totals.PROBABLE || 0}</td>
+          <td>${data.table1.totals.grandTotal || 0}</td>
+        </tr>`;
 
       const t21Head = document.getElementById("navdpcpTable21Head");
       const t21Body = document.getElementById("navdpcpTable21Body");

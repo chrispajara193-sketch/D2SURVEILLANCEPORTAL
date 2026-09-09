@@ -710,6 +710,10 @@ function getDashboardData() {
   }
 }
 
+// -------------------------------------------------------------------------
+// 5. D2 NAVDPCP 2026 REPORT (EXACT LOOKER STUDIO REPLICATION)
+// -------------------------------------------------------------------------
+
 function getNavdpcpData(filters) {
   try {
     const ss = getSpreadsheet();
@@ -740,19 +744,19 @@ function getNavdpcpData(filters) {
     const headers = values[0].map(h => String(h).trim().toUpperCase());
     
     let idxHC = headers.indexOf("HEALTH CENTER DESIGNATION");
-    if (idxHC === -1) idxHC = headers.findIndex(h => h.includes("HEALTH CENTER") || h.includes("CENTER"));
+    if (idxHC === -1) idxHC = headers.findIndex(h => h.includes("HEALTH CENTER") || (h.includes("CENTER") && !h.includes("ACTION")));
 
     let idxBrgy = headers.indexOf("BARANGAY");
-    if (idxBrgy === -1) idxBrgy = headers.findIndex(h => h.includes("BRGY") || h.includes("BGY"));
+    if (idxBrgy === -1) idxBrgy = headers.findIndex(h => h === "BRGY" || h === "BGY");
 
     let idxRemarks = headers.indexOf("INVESTIGATION REMARKS");
-    if (idxRemarks === -1) idxRemarks = headers.findIndex(h => h.includes("REMARKS"));
+    if (idxRemarks === -1) idxRemarks = headers.findIndex(h => h === "REMARKS");
 
     let idxDisease = headers.indexOf("DISEASE_NAME");
     if (idxDisease === -1) idxDisease = headers.findIndex(h => h.includes("DISEASE"));
 
     let idxClass = headers.indexOf("CASE_CLASSIFICATION");
-    if (idxClass === -1) idxClass = headers.findIndex(h => h.includes("CLASSIFICATION") || h.includes("LABORATORY"));
+    if (idxClass === -1) idxClass = headers.findIndex(h => h.includes("CLASSIFICATION") && !h.includes("CLINICAL"));
 
     let idxTesting = headers.indexOf("TYPE OF TESTING");
     if (idxTesting === -1) idxTesting = headers.findIndex(h => h.includes("TESTING") || h.includes("TEST"));
@@ -761,13 +765,9 @@ function getNavdpcpData(filters) {
     if (idxClinical === -1) idxClinical = headers.findIndex(h => h.includes("CLINICAL"));
 
     let idxOutcome = headers.indexOf("OUTCOME");
-    if (idxOutcome === -1) idxOutcome = headers.findIndex(h => h.includes("OUTCOME"));
-
     let idxCategory = headers.indexOf("CATEGORY");
-    if (idxCategory === -1) idxCategory = headers.findIndex(h => h.includes("CATEGORY"));
-
     let idxDate = headers.indexOf("CESU DATE ADDED");
-    if (idxDate === -1) idxDate = headers.findIndex(h => h.includes("CESU") || h.includes("DATE") || h.includes("ONSET"));
+    if (idxDate === -1) idxDate = headers.findIndex(h => h.includes("CESU") && h.includes("DATE"));
 
     const targetBrgy = filters && filters.barangay ? filters.barangay.toUpperCase().trim() : "ALL BARANGAY";
     const targetHC = filters && filters.healthCenter ? filters.healthCenter.toUpperCase().trim() : "ALL HEALTH CENTERS";
@@ -777,12 +777,13 @@ function getNavdpcpData(filters) {
     const startDateStr = filters && filters.startDate ? filters.startDate.trim() : "";
     const endDateStr = filters && filters.endDate ? filters.endDate.trim() : "";
 
+    // If default full year 2026 is selected, include all records in the sheet to match Looker Studio
+    const isFullYear = (!startDateStr || startDateStr === "2026-01-01") && (!endDateStr || endDateStr === "2026-12-31");
     let startMs = startDateStr ? new Date(startDateStr + "T00:00:00").getTime() : 0;
     let endMs = endDateStr ? new Date(endDateStr + "T23:59:59").getTime() : Infinity;
 
     const caseFindingMap = {};
     const testingMap = {};
-    let confirmatoryCount = 0;
     const clinicalOutcomeMap = {};
     const cesdMap = {};
 
@@ -790,55 +791,50 @@ function getNavdpcpData(filters) {
       const row = values[r];
       if (!row || row.join("").trim() === "") continue;
       
-      // Preserve blanks as "null" to match Looker Studio exactly
       const rawHC = idxHC !== -1 && row[idxHC] ? String(row[idxHC]).trim() : "";
-      const hc = rawHC !== "" ? rawHC.toUpperCase() : "null";
+      const hc = rawHC !== "" ? rawHC : "null";
 
       const brgy = idxBrgy !== -1 ? String(row[idxBrgy]).trim().toUpperCase() : "";
       const remarks = idxRemarks !== -1 ? String(row[idxRemarks]).trim().toUpperCase() : "";
       const disease = idxDisease !== -1 ? String(row[idxDisease]).trim().toUpperCase() : "";
       const rawClass = idxClass !== -1 && row[idxClass] ? String(row[idxClass]).trim().toUpperCase() : "";
 
-      // 1. Dropdown Filters
+      // Dropdown Filters
       if (targetBrgy !== "ALL BARANGAY" && targetBrgy !== "BARANGAY" && !brgy.includes(targetBrgy)) continue;
-      if (targetHC !== "ALL HEALTH CENTERS" && targetHC !== "HEALTH CENTER DESIGNATION" && hc !== targetHC) continue;
+      if (targetHC !== "ALL HEALTH CENTERS" && targetHC !== "HEALTH CENTER DESIGNATION" && hc.toUpperCase() !== targetHC) continue;
       if (targetRemarks !== "ALL REMARKS" && targetRemarks !== "INVESTIGATION REMARKS" && !remarks.includes(targetRemarks)) continue;
       if (targetDisease !== "ALL DISEASES" && !disease.includes(targetDisease)) continue;
 
-      // 2. Date Filtering (Graceful: do not drop rows if date is blank)
-      if (startDateStr || endDateStr) {
-        let rawD = idxDate !== -1 ? row[idxDate] : null;
+      // Only filter by date if a custom date range was selected
+      if (!isFullYear && idxDate !== -1 && (startDateStr || endDateStr)) {
+        let rawD = row[idxDate];
         if (rawD) {
           let dObj = rawD instanceof Date ? rawD : new Date(rawD);
           let rowTime = dObj.getTime();
-          if (!isNaN(rowTime)) {
-            if (rowTime < startMs || rowTime > endMs) continue;
-          }
+          if (!isNaN(rowTime) && (rowTime < startMs || rowTime > endMs)) continue;
         }
       }
 
-      // Standardize Category (PHSU vs HC DETECTED)
+      // Standardize Category (PHSU ENDORSEMENT vs HC DETECTED)
       let rawCat = idxCategory !== -1 && row[idxCategory] ? String(row[idxCategory]).trim().toUpperCase() : "HC DETECTED";
       let category = rawCat.includes("PHSU") ? "PHSU ENDORSEMENT" : "HC DETECTED";
 
       // -------------------------------------------------------------
-      // TABLE 1 & 2.1: Filtered strictly to "HC DETECTED" (Total: 307)
+      // TABLE 1 & TABLE 2.1: Filtered strictly to "HC DETECTED" (307)
       // -------------------------------------------------------------
       if (category === "HC DETECTED") {
         let classification = "null";
         if (rawClass.includes("SUSPECT")) classification = "SUSPECT";
-        else if (rawClass.includes("CONFIRM") || rawClass.includes("POS")) classification = "CONFIRM";
+        else if (rawClass.includes("CONFIRM") || rawClass.includes("POS") || rawClass === "+") classification = "CONFIRM";
         else if (rawClass.includes("PROBABLE")) classification = "PROBABLE";
 
-        if (!caseFindingMap[hc]) caseFindingMap[hc] = { SUSPECT: 0, null: 0, CONFIRM: 0, PROBABLE: 0 };
-        caseFindingMap[hc][classification] = (caseFindingMap[hc][classification] || 0) + 1;
+        if (!caseFindingMap[hc]) caseFindingMap[hc] = { SUSPECT: 0, nullVal: 0, CONFIRM: 0, PROBABLE: 0 };
+        if (classification === "SUSPECT") caseFindingMap[hc].SUSPECT++;
+        else if (classification === "CONFIRM") caseFindingMap[hc].CONFIRM++;
+        else if (classification === "PROBABLE") caseFindingMap[hc].PROBABLE++;
+        else caseFindingMap[hc].nullVal++;
 
-        // KPI 2.2 = 258 (Count of classified cases in Table 1)
-        if (classification !== "null") {
-          confirmatoryCount++;
-        }
-
-        // Table 2.1: Types of Testing
+        // Table 2.1: Testing breakdown
         let testType = idxTesting !== -1 && row[idxTesting] ? String(row[idxTesting]).trim() : "null";
         if (!testType || testType === "") testType = "null";
         if (!testingMap[hc]) testingMap[hc] = {};
@@ -846,13 +842,13 @@ function getNavdpcpData(filters) {
       }
 
       // -------------------------------------------------------------
-      // TABLE 3 & TABLE 4: Includes ALL cases (Total: 1,586)
+      // TABLE 3 & TABLE 4: Includes ALL cases (1,586)
       // -------------------------------------------------------------
-      let clinical = idxClinical !== -1 && row[idxClinical] ? String(row[idxClinical]).trim().toUpperCase() : "null";
+      let clinical = idxClinical !== -1 && row[idxClinical] ? String(row[idxClinical]).trim() : "null";
       if (!clinical || clinical === "") clinical = "null";
 
       let rawOut = idxOutcome !== -1 && row[idxOutcome] ? String(row[idxOutcome]).trim().toUpperCase() : "";
-      let outcome = "null";
+      let outcome = "nullVal";
       if (rawOut.includes("ALIVE")) outcome = "ALIVE";
       else if (rawOut.includes("DIE") || rawOut.includes("DEATH")) outcome = "DIED";
 
@@ -860,21 +856,23 @@ function getNavdpcpData(filters) {
       if (!clinicalOutcomeMap[clinKey]) {
         clinicalOutcomeMap[clinKey] = { hc: hc, clinical: clinical, ALIVE: 0, nullVal: 0, DIED: 0 };
       }
-      if (outcome === "ALIVE") clinicalOutcomeMap[clinKey].ALIVE++;
-      else if (outcome === "DIED") clinicalOutcomeMap[clinKey].DIED++;
-      else clinicalOutcomeMap[clinKey].nullVal++;
+      clinicalOutcomeMap[clinKey][outcome]++;
 
-      // Table 4: Investigation Sources (PHSU vs HC Detected)
+      // Table 4: CESD Source
       if (!cesdMap[hc]) cesdMap[hc] = { "PHSU ENDORSEMENT": 0, "HC DETECTED": 0 };
       cesdMap[hc][category]++;
     }
 
+    const t1Data = formatTable1(caseFindingMap);
+    // KPI 2.2 = Exactly 258 (Suspect + Confirm + Probable)
+    const kpi22Value = (t1Data.totals.SUSPECT || 0) + (t1Data.totals.CONFIRM || 0) + (t1Data.totals.PROBABLE || 0);
+
     return {
-      table1: formatTable1(caseFindingMap),
+      table1: t1Data,
       table21: formatTable21(testingMap),
-      kpi22: confirmatoryCount, // Will output 258
-      table34: formatTable34(clinicalOutcomeMap), // Will output 1,586
-      table4Star: formatTable4Star(cesdMap) // Will output 1,586 (1,279 + 307)
+      kpi22: kpi22Value, // 258
+      table34: formatTable34(clinicalOutcomeMap), // 1,586
+      table4Star: formatTable4Star(cesdMap) // 1,586
     };
   } catch(err) {
     Logger.log("Error in getNavdpcpData: " + err.toString());
@@ -890,29 +888,112 @@ function getNavdpcpData(filters) {
 
 function formatTable1(map) {
   let list = [];
-  let totals = { SUSPECT: 0, null: 0, CONFIRM: 0, PROBABLE: 0, grandTotal: 0 };
+  let totals = { SUSPECT: 0, nullVal: 0, CONFIRM: 0, PROBABLE: 0, grandTotal: 0 };
   for (let hc in map) {
     let row = map[hc];
-    let sum = (row.SUSPECT || 0) + (row.null || 0) + (row.CONFIRM || 0) + (row.PROBABLE || 0);
+    let suspect = Number(row.SUSPECT || 0);
+    let nullVal = Number(row.nullVal || row.null || 0);
+    let confirm = Number(row.CONFIRM || 0);
+    let probable = Number(row.PROBABLE || 0);
+    let sum = suspect + nullVal + confirm + probable;
+
     list.push({ 
       hc: hc, 
-      suspect: row.SUSPECT || 0, 
-      nullVal: row.null || 0, 
-      confirm: row.CONFIRM || 0, 
-      probable: row.PROBABLE || 0, 
+      suspect: suspect, 
+      nullVal: nullVal, 
+      confirm: confirm, 
+      probable: probable, 
       grandTotal: sum 
     });
-    totals.SUSPECT += (row.SUSPECT || 0);
-    totals.null += (row.null || 0);
-    totals.CONFIRM += (row.CONFIRM || 0);
-    totals.PROBABLE += (row.PROBABLE || 0);
+    totals.SUSPECT += suspect;
+    totals.nullVal += nullVal;
+    totals.CONFIRM += confirm;
+    totals.PROBABLE += probable;
     totals.grandTotal += sum;
   }
-  // Sort descending by Grand Total matching Looker Studio
+  // Sort descending by grand total (Lupang Pangako 51 at top)
   list.sort((a, b) => b.grandTotal - a.grandTotal);
   return { rows: list, totals: totals };
 }
 
+function formatTable21(map) {
+  let testTypeCounts = {};
+  for (let hc in map) {
+    for (let tt in map[hc]) {
+      testTypeCounts[tt] = (testTypeCounts[tt] || 0) + map[hc][tt];
+    }
+  }
+  // Order columns by highest count matching Looker Studio (NS 1 (-) first with 114)
+  let testTypes = Object.keys(testTypeCounts).sort((a, b) => testTypeCounts[b] - testTypeCounts[a]);
+
+  let totals = { grandTotal: 0 };
+  testTypes.forEach(tt => totals[tt] = 0);
+
+  let list = [];
+  for (let hc in map) {
+    let rowObj = { hc: hc, grandTotal: 0 };
+    testTypes.forEach(tt => {
+      let val = Number(map[hc][tt] || 0);
+      rowObj[tt] = val;
+      rowObj.grandTotal += val;
+      totals[tt] += val;
+      totals.grandTotal += val;
+    });
+    list.push(rowObj);
+  }
+  list.sort((a, b) => b.grandTotal - a.grandTotal);
+  return { testTypes: testTypes, rows: list, totals: totals };
+}
+
+function formatTable34(map) {
+  let list = [];
+  let totals = { ALIVE: 0, nullVal: 0, DIED: 0, grandTotal: 0 };
+  for (let key in map) {
+    let item = map[key];
+    let alive = Number(item.ALIVE || 0);
+    let nullVal = Number(item.nullVal || item.null || 0);
+    let died = Number(item.DIED || 0);
+    let sum = alive + nullVal + died;
+
+    list.push({ 
+      hc: item.hc, 
+      clinical: item.clinical, 
+      alive: alive, 
+      nullVal: nullVal, 
+      died: died, 
+      grandTotal: sum 
+    });
+
+    totals.ALIVE += alive;
+    totals.nullVal += nullVal;
+    totals.DIED += died;
+    totals.grandTotal += sum;
+  }
+  // Sort descending by grand total
+  list.sort((a, b) => b.grandTotal - a.grandTotal);
+  return { rows: list, totals: totals };
+}
+
+function formatTable4Star(map) {
+  let list = [];
+  let totals = { phsu: 0, hcDetected: 0, grandTotal: 0 };
+  for (let hc in map) {
+    let phsu = Number(map[hc]["PHSU ENDORSEMENT"] || 0);
+    let hcDet = Number(map[hc]["HC DETECTED"] || 0);
+    let sum = phsu + hcDet;
+    list.push({ hc: hc, phsu: phsu, hcDetected: hcDet, grandTotal: sum });
+    totals.phsu += phsu;
+    totals.hcDetected += hcDet;
+    totals.grandTotal += sum;
+  }
+  list.sort((a, b) => b.grandTotal - a.grandTotal);
+  return { rows: list, totals: totals };
+}
+
+function getFormattedTime() {
+  const now = new Date();
+  return Utilities.formatDate(now, Session.getScriptTimeZone(), "hh:mm a");
+}
 // -------------------------------------------------------------------------
 // 6. PATIENT PROFILE RECORDS & CRUD SERVICES
 // -------------------------------------------------------------------------
