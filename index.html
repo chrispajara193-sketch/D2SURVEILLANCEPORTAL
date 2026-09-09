@@ -2914,7 +2914,7 @@ if (!firebase.apps.length) {
   /* =========================================================================
    * DIRECT VS CODE <-> GOOGLE APPS SCRIPT REAL-TIME CONNECTOR
    * ========================================================================= */
-  const BACKEND_URL = "https://script.google.com/macros/s/AKfycbzYUBwoCkhk0DBopiRYpvre5FQmXSAPVXxuJDIdt21LgtzVuq8qqu5s_L8kbkA_KkTF/exec";
+  const BACKEND_URL = "https://script.google.com/macros/s/AKfycbzK8oYUBQSo2RP43Wa_YwCjxY8GPozC-6MYJJVfL-8C6FWUFyBUtjIHfTQPii3uGGGa/exec";
 
   if (typeof google === "undefined" || !google.script || !google.script.run) {
     function createRunner(successCb, failureCb) {
@@ -4691,23 +4691,28 @@ const PORTAL_DOCUMENTS = [
         let t1Html = "";
         if (data.table1 && data.table1.rows && data.table1.rows.length > 0) {
           data.table1.rows.forEach(r => {
-          t1Html += `<tr>
-            <td><strong>${r.hc}</strong></td>
-            <td>${r.suspect}</td>
-            <td>${r.nullVal}</td>
-            <td>${r.confirm}</td>
-            <td>${r.probable}</td>
-            <td><strong>${r.grandTotal}</strong></td>
+            t1Html += `<tr>
+              <td><strong>${r.hc}</strong></td>
+              <td>${r.suspect}</td>
+              <td>${r.nullVal}</td>
+              <td>${r.confirm}</td>
+              <td>${r.probable}</td>
+              <td><strong>${r.grandTotal}</strong></td>
+            </tr>`;
+          });
+          t1Html += `<tr class="fw-bold bg-light">
+            <td>Grand total</td>
+            <td>${data.table1.totals.SUSPECT || 0}</td>
+            <td>${data.table1.totals.nullVal || data.table1.totals.null || 0}</td>
+            <td>${data.table1.totals.CONFIRM || 0}</td>
+            <td>${data.table1.totals.PROBABLE || 0}</td>
+            <td>${data.table1.totals.grandTotal || 0}</td>
           </tr>`;
-        });
-        t1Html += `<tr class="fw-bold bg-light">
-          <td>Grand total</td>
-          <td>${data.table1.totals.SUSPECT || 0}</td>
-          <td>${data.table1.totals.nullVal || data.table1.totals.null || 0}</td>
-          <td>${data.table1.totals.CONFIRM || 0}</td>
-          <td>${data.table1.totals.PROBABLE || 0}</td>
-          <td>${data.table1.totals.grandTotal || 0}</td>
-        </tr>`;
+        } else {
+          t1Html = '<tr><td colspan="6" class="text-center py-3 text-muted">No records found.</td></tr>';
+        }
+        t1Body.innerHTML = t1Html;
+      } // <-- Was missing
 
       const t21Head = document.getElementById("navdpcpTable21Head");
       const t21Body = document.getElementById("navdpcpTable21Body");
