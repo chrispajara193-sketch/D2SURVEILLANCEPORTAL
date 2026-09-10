@@ -243,9 +243,9 @@ function uploadPdsFile(payload) {
     if (matches && matches.length === 3) {
       const contentType = matches[1];
       const decodedBytes = Utilities.base64Decode(matches[2]);
-      blob = Utilities.newBlob(decodedBytes, contentType, `CIF_${caseId}_${originalName}`);
+      blob = Utilities.newBlob(decodedBytes, contentType, originalName);
     } else {
-      blob = Utilities.newBlob(rawData, "application/octet-stream", `CIF_${caseId}_${originalName}`);
+      blob = Utilities.newBlob(rawData, "application/octet-stream", originalName);
     }
 
     const folder = getOrCreateDriveFolder(PDS_CIF_FOLDER);
