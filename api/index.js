@@ -4,8 +4,17 @@
  * =========================================================================
  */
 
-// PASTE YOUR ACTUAL SPREADSHEET ID HERE
+// 1. PRIMARY SPREADSHEET (Main Surveillance Portal Database)
 const SPREADSHEET_ID = "1sUTII813loiUG-LD1j-JUgSHagmmKf82QhxU4-Kl5IA";
+
+// 2. TARGET SPREADSHEET FOR PATIENT PROFILE DATA (Accepts full URL or raw ID)
+const PATIENT_SPREADSHEET_ID_OR_URL = "1rrlgAX7ad_IDcHdIXe8gHlWBFsvH5DPCD1ZlW_nR-d0";
+
+// Optional: Specific tab/sheet name in the external spreadsheet (leave "" to use first/default sheet)
+const PATIENT_TARGET_SHEET_NAME = ""; 
+
+// Google Drive storage folder names for uploads
+const PDS_CIF_FOLDER = "D2_DESU_CIF_Attachments";
 
 const DISTRICT_2_BARANGAYS = [
   "BAGONG SILANGAN",
@@ -81,10 +90,6 @@ function doPost(e) {
     return createJsonResponse(saveRecord(payload.formData, payload.rowIndex));
   }
 
-  if (action === 'uploadDirectoryPhoto') {
-    return createJsonResponse(uploadDirectoryPhoto(payload));
-  }
-
   if (action === 'uploadPdsFile') {
     return createJsonResponse(uploadPdsFile(payload));
   }
@@ -98,8 +103,32 @@ function createJsonResponse(data) {
 }
 
 // -------------------------------------------------------------------------
-// SPREADSHEET & SHEET LOCATORS (CASE-INSENSITIVE)
+// SPREADSHEET & SHEET LOCATORS (CASE-INSENSITIVE & DUAL URL/ID SUPPORT)
 // -------------------------------------------------------------------------
+
+/**
+ * Resolves a Google Spreadsheet from either a raw Sheet ID or a full Google Sheet URL
+ */
+function openSpreadsheetByIdOrUrl(idOrUrl) {
+  if (!idOrUrl || typeof idOrUrl !== 'string') return null;
+  const clean = idOrUrl.trim();
+  if (!clean || clean.indexOf("PASTE_YOUR_") !== -1) return null;
+
+  try {
+    if (clean.indexOf("docs.google.com") !== -1 || clean.indexOf("http") === 0) {
+      const match = clean.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return SpreadsheetApp.openById(match[1]);
+      }
+      return SpreadsheetApp.openByUrl(clean);
+    } else {
+      return SpreadsheetApp.openById(clean);
+    }
+  } catch (err) {
+    Logger.log("openSpreadsheetByIdOrUrl error: " + err.message);
+    return null;
+  }
+}
 
 function getSpreadsheet() {
   try {
@@ -238,9 +267,6 @@ function getDirectoryData() {
   }
 }
 
-/**
- * Uploads a staff avatar to Google Drive and writes the direct public URL into DIRECTORY sheet
- */
 function uploadDirectoryPhoto(payload) {
   try {
     if (!payload || !payload.base64Data) {
@@ -273,7 +299,6 @@ function uploadDirectoryPhoto(payload) {
 
     const directUrl = `https://lh3.googleusercontent.com/d/${file.getId()}`;
 
-    // Find or create PICTURE column in DIRECTORY
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim().toUpperCase());
     let picCol = headers.findIndex(h => h.includes("PICTURE") || h.includes("PHOTO") || h.includes("IMAGE") || h.includes("AVATAR"));
 
@@ -285,7 +310,6 @@ function uploadDirectoryPhoto(payload) {
     if (rowIndex && rowIndex > 1 && rowIndex <= sheet.getLastRow()) {
       sheet.getRange(rowIndex, picCol + 1).setValue(directUrl);
     } else {
-      // Fallback find row by name
       const allRows = sheet.getDataRange().getValues();
       for (let r = 1; r < allRows.length; r++) {
         if (String(allRows[r][0] || '').trim().toUpperCase() === staffName.toUpperCase()) {
@@ -302,9 +326,6 @@ function uploadDirectoryPhoto(payload) {
   }
 }
 
-/**
- * Uploads patient PDS / CIF / CRF documentation to Google Drive
- */
 function uploadPdsFile(payload) {
   try {
     if (!payload || !payload.base64Data) {
@@ -367,8 +388,6 @@ function processLogin(data) {
       const dbUser = String(rows[i][0] || '').trim().toLowerCase();
       const dbPass = String(rows[i][1] || '').trim();
       const dbStatus = String(rows[i][2] || '').trim().toLowerCase();
-      
-      // Column D (User Level) and Column E (Designation)
       const dbRole = String(rows[i][3] || 'HC_USER').trim().toUpperCase();
       const dbDesignation = String(rows[i][4] || '').trim();
 
@@ -479,7 +498,6 @@ function getMetricsData(filters) {
       if (!barangay && !diseaseName && !healthCenter) continue;
       if (!healthCenter || healthCenter === "") continue;
       
-      // Filter out non-surveillance / discarded logs
       if (
         rawRemarksValue.includes("DELIST") || rawRemarksValue.includes("NON-RES") || 
         rawRemarksValue.includes("NON RES") || rawRemarksValue.includes("DISCARD") || 
@@ -569,7 +587,6 @@ function getMetricsData(filters) {
     
     const sortedWeeks = Array.from(dynamicWeeks).sort((a, b) => a - b);
     
-    // Baseline threshold dictionary for all monitored disease vectors
     const baselines = {
       DENGUE: fetchComprehensiveDiseaseBaseline(ss, "DENGUE", "DENGUE BASELINE"),
       MEASLES: fetchComprehensiveDiseaseBaseline(ss, "MEASLES", "MEASLES BASELINE"),
@@ -777,7 +794,6 @@ function getNavdpcpData(filters) {
     const startDateStr = filters && filters.startDate ? filters.startDate.trim() : "";
     const endDateStr = filters && filters.endDate ? filters.endDate.trim() : "";
 
-    // If default full year 2026 is selected, include all records in the sheet to match Looker Studio
     const isFullYear = (!startDateStr || startDateStr === "2026-01-01") && (!endDateStr || endDateStr === "2026-12-31");
     let startMs = startDateStr ? new Date(startDateStr + "T00:00:00").getTime() : 0;
     let endMs = endDateStr ? new Date(endDateStr + "T23:59:59").getTime() : Infinity;
@@ -799,13 +815,11 @@ function getNavdpcpData(filters) {
       const disease = idxDisease !== -1 ? String(row[idxDisease]).trim().toUpperCase() : "";
       const rawClass = idxClass !== -1 && row[idxClass] ? String(row[idxClass]).trim().toUpperCase() : "";
 
-      // Dropdown Filters
       if (targetBrgy !== "ALL BARANGAY" && targetBrgy !== "BARANGAY" && !brgy.includes(targetBrgy)) continue;
       if (targetHC !== "ALL HEALTH CENTERS" && targetHC !== "HEALTH CENTER DESIGNATION" && hc.toUpperCase() !== targetHC) continue;
       if (targetRemarks !== "ALL REMARKS" && targetRemarks !== "INVESTIGATION REMARKS" && !remarks.includes(targetRemarks)) continue;
       if (targetDisease !== "ALL DISEASES" && !disease.includes(targetDisease)) continue;
 
-      // Only filter by date if a custom date range was selected
       if (!isFullYear && idxDate !== -1 && (startDateStr || endDateStr)) {
         let rawD = row[idxDate];
         if (rawD) {
@@ -815,13 +829,9 @@ function getNavdpcpData(filters) {
         }
       }
 
-      // Standardize Category (PHSU ENDORSEMENT vs HC DETECTED)
       let rawCat = idxCategory !== -1 && row[idxCategory] ? String(row[idxCategory]).trim().toUpperCase() : "HC DETECTED";
       let category = rawCat.includes("PHSU") ? "PHSU ENDORSEMENT" : "HC DETECTED";
 
-      // -------------------------------------------------------------
-      // TABLE 1 & TABLE 2.1: Filtered strictly to "HC DETECTED" (307)
-      // -------------------------------------------------------------
       if (category === "HC DETECTED") {
         let classification = "null";
         if (rawClass.includes("SUSPECT")) classification = "SUSPECT";
@@ -834,16 +844,12 @@ function getNavdpcpData(filters) {
         else if (classification === "PROBABLE") caseFindingMap[hc].PROBABLE++;
         else caseFindingMap[hc].nullVal++;
 
-        // Table 2.1: Testing breakdown
         let testType = idxTesting !== -1 && row[idxTesting] ? String(row[idxTesting]).trim() : "null";
         if (!testType || testType === "") testType = "null";
         if (!testingMap[hc]) testingMap[hc] = {};
         testingMap[hc][testType] = (testingMap[hc][testType] || 0) + 1;
       }
 
-      // -------------------------------------------------------------
-      // TABLE 3 & TABLE 4: Includes ALL cases (1,586)
-      // -------------------------------------------------------------
       let clinical = idxClinical !== -1 && row[idxClinical] ? String(row[idxClinical]).trim() : "null";
       if (!clinical || clinical === "") clinical = "null";
 
@@ -858,21 +864,19 @@ function getNavdpcpData(filters) {
       }
       clinicalOutcomeMap[clinKey][outcome]++;
 
-      // Table 4: CESD Source
       if (!cesdMap[hc]) cesdMap[hc] = { "PHSU ENDORSEMENT": 0, "HC DETECTED": 0 };
       cesdMap[hc][category]++;
     }
 
     const t1Data = formatTable1(caseFindingMap);
-    // KPI 2.2 = Exactly 258 (Suspect + Confirm + Probable)
     const kpi22Value = (t1Data.totals.SUSPECT || 0) + (t1Data.totals.CONFIRM || 0) + (t1Data.totals.PROBABLE || 0);
 
     return {
       table1: t1Data,
       table21: formatTable21(testingMap),
-      kpi22: kpi22Value, // 258
-      table34: formatTable34(clinicalOutcomeMap), // 1,586
-      table4Star: formatTable4Star(cesdMap) // 1,586
+      kpi22: kpi22Value,
+      table34: formatTable34(clinicalOutcomeMap),
+      table4Star: formatTable4Star(cesdMap)
     };
   } catch(err) {
     Logger.log("Error in getNavdpcpData: " + err.toString());
@@ -886,122 +890,122 @@ function getNavdpcpData(filters) {
   }
 }
 
-function formatTable1(map) {
-  let list = [];
-  let totals = { SUSPECT: 0, nullVal: 0, CONFIRM: 0, PROBABLE: 0, grandTotal: 0 };
-  for (let hc in map) {
-    let row = map[hc];
-    let suspect = Number(row.SUSPECT || 0);
-    let nullVal = Number(row.nullVal || row.null || 0);
-    let confirm = Number(row.CONFIRM || 0);
-    let probable = Number(row.PROBABLE || 0);
-    let sum = suspect + nullVal + confirm + probable;
+// -------------------------------------------------------------------------
+// 6. PATIENT PROFILE RECORDS & CRUD SERVICES (DUAL EXTERNAL SPREADSHEET SYNC)
+// -------------------------------------------------------------------------
 
-    list.push({ 
-      hc: hc, 
-      suspect: suspect, 
-      nullVal: nullVal, 
-      confirm: confirm, 
-      probable: probable, 
-      grandTotal: sum 
-    });
-    totals.SUSPECT += suspect;
-    totals.nullVal += nullVal;
-    totals.CONFIRM += confirm;
-    totals.PROBABLE += probable;
-    totals.grandTotal += sum;
+/**
+ * Saves or updates patient profile data into the designated external spreadsheet by ID or URL
+ */
+function saveToExternalSpreadsheet(formData, rowIndex) {
+  if (!PATIENT_SPREADSHEET_ID_OR_URL || PATIENT_SPREADSHEET_ID_OR_URL.trim() === "" || PATIENT_SPREADSHEET_ID_OR_URL.indexOf("PASTE_YOUR_") !== -1) {
+    return; // No external target configured
   }
-  // Sort descending by grand total (Lupang Pangako 51 at top)
-  list.sort((a, b) => b.grandTotal - a.grandTotal);
-  return { rows: list, totals: totals };
-}
 
-function formatTable21(map) {
-  let testTypeCounts = {};
-  for (let hc in map) {
-    for (let tt in map[hc]) {
-      testTypeCounts[tt] = (testTypeCounts[tt] || 0) + map[hc][tt];
+  try {
+    const targetSs = openSpreadsheetByIdOrUrl(PATIENT_SPREADSHEET_ID_OR_URL);
+    if (!targetSs) {
+      Logger.log("External target spreadsheet could not be opened. Check PATIENT_SPREADSHEET_ID_OR_URL.");
+      return;
     }
-  }
-  // Order columns by highest count matching Looker Studio (NS 1 (-) first with 114)
-  let testTypes = Object.keys(testTypeCounts).sort((a, b) => testTypeCounts[b] - testTypeCounts[a]);
 
-  let totals = { grandTotal: 0 };
-  testTypes.forEach(tt => totals[tt] = 0);
+    let targetSheet = null;
+    if (PATIENT_TARGET_SHEET_NAME && PATIENT_TARGET_SHEET_NAME.trim() !== "") {
+      targetSheet = getSheetByNameInsensitive(targetSs, PATIENT_TARGET_SHEET_NAME);
+    }
+    if (!targetSheet) {
+      targetSheet = getSheetByNameInsensitive(targetSs, "MDB DISTRICT 2 2026") ||
+                    getSheetByNameInsensitive(targetSs, "MDB") ||
+                    getSheetByNameInsensitive(targetSs, "PATIENT PROFILE") ||
+                    targetSs.getSheets()[0];
+    }
 
-  let list = [];
-  for (let hc in map) {
-    let rowObj = { hc: hc, grandTotal: 0 };
-    testTypes.forEach(tt => {
-      let val = Number(map[hc][tt] || 0);
-      rowObj[tt] = val;
-      rowObj.grandTotal += val;
-      totals[tt] += val;
-      totals.grandTotal += val;
+    if (!targetSheet) {
+      Logger.log("Target sheet in external spreadsheet not found.");
+      return;
+    }
+
+    const lastRow = targetSheet.getLastRow();
+    let lastCol = targetSheet.getLastColumn();
+
+    // If destination sheet has no headers, initialize with formData keys
+    if (lastRow === 0 || lastCol === 0) {
+      const defaultHeaders = Object.keys(formData);
+      targetSheet.getRange(1, 1, 1, defaultHeaders.length).setValues([defaultHeaders]);
+      lastCol = defaultHeaders.length;
+    }
+
+    const headers = targetSheet.getRange(1, 1, 1, targetSheet.getLastColumn()).getValues()[0].map(h => String(h).trim().toUpperCase());
+
+    const rowValues = [];
+    headers.forEach(header => {
+      let val = "";
+      for (let key in formData) {
+        if (key.trim().toUpperCase() === header) {
+          val = formData[key];
+          break;
+        }
+      }
+      rowValues.push(val);
     });
-    list.push(rowObj);
+
+    // Check if record exists by CASE_ID to update it, otherwise append new row
+    let targetRowIndex = -1;
+    const caseId = formData["CASE_ID"] || formData["CASE ID"] || "";
+
+    if (caseId && caseId.trim() !== "" && targetSheet.getLastRow() > 1) {
+      let caseIdColIdx = headers.indexOf("CASE_ID");
+      if (caseIdColIdx === -1) caseIdColIdx = headers.indexOf("CASE ID");
+      
+      if (caseIdColIdx !== -1) {
+        const idColValues = targetSheet.getRange(2, caseIdColIdx + 1, targetSheet.getLastRow() - 1, 1).getValues();
+        for (let i = 0; i < idColValues.length; i++) {
+          if (String(idColValues[i][0]).trim().toUpperCase() === caseId.trim().toUpperCase()) {
+            targetRowIndex = i + 2;
+            break;
+          }
+        }
+      }
+    }
+
+    if (targetRowIndex > 1) {
+      targetSheet.getRange(targetRowIndex, 1, 1, rowValues.length).setValues([rowValues]);
+      Logger.log(`Updated external spreadsheet row: ${targetRowIndex}`);
+    } else {
+      targetSheet.appendRow(rowValues);
+      Logger.log(`Appended new row to external spreadsheet.`);
+    }
+
+  } catch (err) {
+    Logger.log("saveToExternalSpreadsheet error: " + err.toString());
   }
-  list.sort((a, b) => b.grandTotal - a.grandTotal);
-  return { testTypes: testTypes, rows: list, totals: totals };
 }
-
-function formatTable34(map) {
-  let list = [];
-  let totals = { ALIVE: 0, nullVal: 0, DIED: 0, grandTotal: 0 };
-  for (let key in map) {
-    let item = map[key];
-    let alive = Number(item.ALIVE || 0);
-    let nullVal = Number(item.nullVal || item.null || 0);
-    let died = Number(item.DIED || 0);
-    let sum = alive + nullVal + died;
-
-    list.push({ 
-      hc: item.hc, 
-      clinical: item.clinical, 
-      alive: alive, 
-      nullVal: nullVal, 
-      died: died, 
-      grandTotal: sum 
-    });
-
-    totals.ALIVE += alive;
-    totals.nullVal += nullVal;
-    totals.DIED += died;
-    totals.grandTotal += sum;
-  }
-  // Sort descending by grand total
-  list.sort((a, b) => b.grandTotal - a.grandTotal);
-  return { rows: list, totals: totals };
-}
-
-function formatTable4Star(map) {
-  let list = [];
-  let totals = { phsu: 0, hcDetected: 0, grandTotal: 0 };
-  for (let hc in map) {
-    let phsu = Number(map[hc]["PHSU ENDORSEMENT"] || 0);
-    let hcDet = Number(map[hc]["HC DETECTED"] || 0);
-    let sum = phsu + hcDet;
-    list.push({ hc: hc, phsu: phsu, hcDetected: hcDet, grandTotal: sum });
-    totals.phsu += phsu;
-    totals.hcDetected += hcDet;
-    totals.grandTotal += sum;
-  }
-  list.sort((a, b) => b.grandTotal - a.grandTotal);
-  return { rows: list, totals: totals };
-}
-
-function getFormattedTime() {
-  const now = new Date();
-  return Utilities.formatDate(now, Session.getScriptTimeZone(), "hh:mm a");
-}
-// -------------------------------------------------------------------------
-// 6. PATIENT PROFILE RECORDS & CRUD SERVICES
-// -------------------------------------------------------------------------
 
 function getRecords() {
   try {
-    const ss = getSpreadsheet();
-    const sheet = getMdbSheet(ss); 
+    let ss = getSpreadsheet();
+    let sheet = getMdbSheet(ss);
+
+    // If external spreadsheet is specified and populated, read from it
+    if (PATIENT_SPREADSHEET_ID_OR_URL && PATIENT_SPREADSHEET_ID_OR_URL.indexOf("PASTE_YOUR_") === -1) {
+      const extSs = openSpreadsheetByIdOrUrl(PATIENT_SPREADSHEET_ID_OR_URL);
+      if (extSs) {
+        let extSheet = null;
+        if (PATIENT_TARGET_SHEET_NAME && PATIENT_TARGET_SHEET_NAME.trim() !== "") {
+          extSheet = getSheetByNameInsensitive(extSs, PATIENT_TARGET_SHEET_NAME);
+        }
+        if (!extSheet) {
+          extSheet = getSheetByNameInsensitive(extSs, "MDB DISTRICT 2 2026") || 
+                     getSheetByNameInsensitive(extSs, "MDB") || 
+                     getSheetByNameInsensitive(extSs, "PATIENT PROFILE") ||
+                     extSs.getSheets()[0];
+        }
+        if (extSheet && extSheet.getLastRow() > 1) {
+          sheet = extSheet;
+        }
+      }
+    }
+
     if (!sheet) return [];
 
     const lastRow = sheet.getLastRow();
@@ -1058,7 +1062,12 @@ function saveRecord(formData, rowIndex) {
       rowValues.push(val);
     });
 
+    // 1. Save to Primary MDB Sheet
     sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
+
+    // 2. Synchronize to Secondary / External Spreadsheet by ID or URL
+    saveToExternalSpreadsheet(formData, rowIndex);
+
     return { success: true, message: `Record successfully ${rowIndex ? 'updated' : 'saved'}!` };
   } catch (err) {
     return { success: false, message: `Failed to save: ${err.message}` };
@@ -1270,34 +1279,50 @@ function fetchComprehensiveDiseaseBaseline(ss, diseaseKey, defaultSheetName) {
 
 function formatTable1(map) {
   let list = [];
-  let totals = { SUSPECT: 0, CONFIRM: 0, null: 0, PROBABLE: 0, grandTotal: 0 };
+  let totals = { SUSPECT: 0, nullVal: 0, CONFIRM: 0, PROBABLE: 0, grandTotal: 0 };
   for (let hc in map) {
     let row = map[hc];
-    let sum = (row.SUSPECT || 0) + (row.CONFIRM || 0) + (row.null || 0) + (row.PROBABLE || 0);
-    list.push({ hc: hc, suspect: row.SUSPECT || 0, confirm: row.CONFIRM || 0, nullVal: row.null || 0, probable: row.PROBABLE || 0, grandTotal: sum });
-    totals.SUSPECT += (row.SUSPECT || 0);
-    totals.CONFIRM += (row.CONFIRM || 0);
-    totals.null += (row.null || 0);
-    totals.PROBABLE += (row.PROBABLE || 0);
+    let suspect = Number(row.SUSPECT || 0);
+    let nullVal = Number(row.nullVal || row.null || 0);
+    let confirm = Number(row.CONFIRM || 0);
+    let probable = Number(row.PROBABLE || 0);
+    let sum = suspect + nullVal + confirm + probable;
+
+    list.push({ 
+      hc: hc, 
+      suspect: suspect, 
+      nullVal: nullVal, 
+      confirm: confirm, 
+      probable: probable, 
+      grandTotal: sum 
+    });
+    totals.SUSPECT += suspect;
+    totals.nullVal += nullVal;
+    totals.CONFIRM += confirm;
+    totals.PROBABLE += probable;
     totals.grandTotal += sum;
   }
+  list.sort((a, b) => b.grandTotal - a.grandTotal);
   return { rows: list, totals: totals };
 }
 
 function formatTable21(map) {
-  let testTypesSet = new Set();
-  let list = [];
+  let testTypeCounts = {};
   for (let hc in map) {
-    for (let tt in map[hc]) testTypesSet.add(tt);
+    for (let tt in map[hc]) {
+      testTypeCounts[tt] = (testTypeCounts[tt] || 0) + map[hc][tt];
+    }
   }
-  let testTypes = Array.from(testTypesSet).sort();
+  let testTypes = Object.keys(testTypeCounts).sort((a, b) => testTypeCounts[b] - testTypeCounts[a]);
+
   let totals = { grandTotal: 0 };
   testTypes.forEach(tt => totals[tt] = 0);
 
+  let list = [];
   for (let hc in map) {
     let rowObj = { hc: hc, grandTotal: 0 };
     testTypes.forEach(tt => {
-      let val = map[hc][tt] || 0;
+      let val = Number(map[hc][tt] || 0);
       rowObj[tt] = val;
       rowObj.grandTotal += val;
       totals[tt] += val;
@@ -1305,6 +1330,7 @@ function formatTable21(map) {
     });
     list.push(rowObj);
   }
+  list.sort((a, b) => b.grandTotal - a.grandTotal);
   return { testTypes: testTypes, rows: list, totals: totals };
 }
 
@@ -1313,13 +1339,26 @@ function formatTable34(map) {
   let totals = { ALIVE: 0, nullVal: 0, DIED: 0, grandTotal: 0 };
   for (let key in map) {
     let item = map[key];
-    let sum = item.ALIVE + item.null + item.DIED;
-    list.push({ hc: item.hc, clinical: item.clinical, alive: item.ALIVE, nullVal: item.null, died: item.DIED, grandTotal: sum });
-    totals.ALIVE += item.ALIVE;
-    totals.nullVal += item.null;
-    totals.DIED += item.DIED;
+    let alive = Number(item.ALIVE || 0);
+    let nullVal = Number(item.nullVal || item.null || 0);
+    let died = Number(item.DIED || 0);
+    let sum = alive + nullVal + died;
+
+    list.push({ 
+      hc: item.hc, 
+      clinical: item.clinical, 
+      alive: alive, 
+      nullVal: nullVal, 
+      died: died, 
+      grandTotal: sum 
+    });
+
+    totals.ALIVE += alive;
+    totals.nullVal += nullVal;
+    totals.DIED += died;
     totals.grandTotal += sum;
   }
+  list.sort((a, b) => b.grandTotal - a.grandTotal);
   return { rows: list, totals: totals };
 }
 
@@ -1327,14 +1366,15 @@ function formatTable4Star(map) {
   let list = [];
   let totals = { phsu: 0, hcDetected: 0, grandTotal: 0 };
   for (let hc in map) {
-    let phsu = map[hc]["PHSU ENDORSEMENT"] || 0;
-    let hcDet = map[hc]["HC DETECTED"] || 0;
+    let phsu = Number(map[hc]["PHSU ENDORSEMENT"] || 0);
+    let hcDet = Number(map[hc]["HC DETECTED"] || 0);
     let sum = phsu + hcDet;
     list.push({ hc: hc, phsu: phsu, hcDetected: hcDet, grandTotal: sum });
     totals.phsu += phsu;
     totals.hcDetected += hcDet;
     totals.grandTotal += sum;
   }
+  list.sort((a, b) => b.grandTotal - a.grandTotal);
   return { rows: list, totals: totals };
 }
 
