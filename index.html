@@ -2927,12 +2927,12 @@ if (!firebase.apps.length) {
             try {
               let response;
 
-              // 1. Fast, instant Login via GET (bypasses Google POST 302 redirect issues)
+             // 1. Instant Login via GET
               if (methodName === 'processLogin') {
                 const creds = args[0] || {};
                 const query = `?action=login&username=${encodeURIComponent(creds.username || '')}&password=${encodeURIComponent(creds.password || '')}`;
                 response = await fetch(BACKEND_URL + query);
-              } 
+              }
               // 2. Heavy data modifications (Save Record / Upload CIF)
               else if (methodName === 'saveRecord' || methodName === 'uploadPdsFile') {
                 let payload = { action: methodName };
@@ -3991,7 +3991,6 @@ const PORTAL_DOCUMENTS = [
         initParticleConstellation();
         initRememberedAccount();
         updateAuthUI();
-        loadDataServer();
       } catch (err) {
         console.error("Initialization error:", err);
       }

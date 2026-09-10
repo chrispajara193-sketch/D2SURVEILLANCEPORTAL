@@ -29,72 +29,80 @@ const DISTRICT_2_BARANGAYS = [
  * Handles HTTP GET requests (For web app, standalone views, and VS Code API calls)
  */
 function doGet(e) {
-  e = e || { parameter: {} };
-  const action = (e.parameter && e.parameter.action) ? String(e.parameter.action).trim() : '';
+  try {
+    e = e || { parameter: {} };
+    const action = (e.parameter && e.parameter.action) ? String(e.parameter.action).trim() : '';
 
-  if (action === 'getMetrics') {
-    return createJsonResponse(getMetricsData(e.parameter));
-  }
-  
-  if (action === 'getDashboard') {
-    return createJsonResponse(getDashboardData());
-  }
+    if (action === 'getMetrics') {
+      return createJsonResponse(getMetricsData(e.parameter));
+    }
+    
+    if (action === 'getDashboard') {
+      return createJsonResponse(getDashboardData());
+    }
 
-  if (action === 'getDirectory') {
-    return createJsonResponse(getDirectoryData());
-  }
+    if (action === 'getDirectory') {
+      return createJsonResponse(getDirectoryData());
+    }
 
-  if (action === 'login') {
-    const loginData = { username: e.parameter.username, password: e.parameter.password };
-    return createJsonResponse(processLogin(loginData));
-  }
+    if (action === 'login') {
+      const loginData = { username: e.parameter.username, password: e.parameter.password };
+      return createJsonResponse(processLogin(loginData));
+    }
 
-  if (action === 'getRecords') {
-    return createJsonResponse(getRecords());
-  }
+    if (action === 'getRecords') {
+      return createJsonResponse(getRecords());
+    }
 
-  if (action === 'getNavdpcp') {
-    return createJsonResponse(getNavdpcpData(e.parameter));
-  }
+    if (action === 'getNavdpcp') {
+      return createJsonResponse(getNavdpcpData(e.parameter));
+    }
 
-  return createJsonResponse({ 
-    status: "online", 
-    message: "QC-DESU District 2 Master Surveillance API is running." 
-  });
+    return createJsonResponse({ 
+      status: "online", 
+      message: "QC-DESU District 2 Master Surveillance API is running." 
+    });
+  } catch (err) {
+    return createJsonResponse({ success: false, message: "SERVER_ERROR: " + err.toString() });
+  }
 }
 
 /**
  * Handles HTTP POST requests (For saving records or CIF uploads)
  */
 function doPost(e) {
-  e = e || { parameter: {}, postData: {} };
-  let payload = {};
-  
-  if (e.postData && e.postData.contents) {
-    try {
-      payload = JSON.parse(e.postData.contents);
-    } catch (err) {
+  try {
+    e = e || { parameter: {}, postData: {} };
+    let payload = {};
+    
+    if (e.postData && e.postData.contents) {
+      try {
+        payload = JSON.parse(e.postData.contents);
+      } catch (err) {
+        payload = e.parameter || {};
+      }
+    } else {
       payload = e.parameter || {};
     }
-  } else {
-    payload = e.parameter || {};
+
+    const action = payload.action || (e.parameter ? e.parameter.action : '');
+
+    if (action === 'login') {
+      return createJsonResponse(processLogin(payload));
+    }
+
+    if (action === 'saveRecord') {
+      return createJsonResponse(saveRecord(payload.formData, payload.rowIndex));
+    }
+
+    if (action === 'uploadPdsFile') {
+      return createJsonResponse(uploadPdsFile(payload));
+    }
+
+    return createJsonResponse({ success: false, message: "Invalid POST action." });
+  } catch (err) {
+    return createJsonResponse({ success: false, message: "SERVER_POST_ERROR: " + err.toString() });
   }
-
-  const action = payload.action || (e.parameter ? e.parameter.action : '');
-
-  if (action === 'login') {
-    return createJsonResponse(processLogin(payload));
-  }
-
-  if (action === 'saveRecord') {
-    return createJsonResponse(saveRecord(payload.formData, payload.rowIndex));
-  }
-
-  if (action === 'uploadPdsFile') {
-    return createJsonResponse(uploadPdsFile(payload));
-  }
-
-  return createJsonResponse({ success: false, message: "Invalid POST action." });
 }
 
 function createJsonResponse(data) {
@@ -546,30 +554,16 @@ function getMetricsData(filters) {
     
     const sortedWeeks = Array.from(dynamicWeeks).sort((a, b) => a - b);
     
-    // Uses sheetMap to retrieve all 21 baselines in memory instantly!
-    const baselines = {
-      DENGUE: fetchComprehensiveDiseaseBaseline(ss, "DENGUE", "DENGUE BASELINE", sheetMap),
-      MEASLES: fetchComprehensiveDiseaseBaseline(ss, "MEASLES", "MEASLES BASELINE", sheetMap),
-      LEPTO: fetchComprehensiveDiseaseBaseline(ss, "LEPTO", "LEPTO BASELINE", sheetMap),
-      LEPTOSPIROSIS: fetchComprehensiveDiseaseBaseline(ss, "LEPTO", "LEPTO BASELINE", sheetMap),
-      COVID19: fetchComprehensiveDiseaseBaseline(ss, "COVID", "COVID BASELINE", sheetMap),
-      COVID: fetchComprehensiveDiseaseBaseline(ss, "COVID", "COVID BASELINE", sheetMap),
-      "COVID-19": fetchComprehensiveDiseaseBaseline(ss, "COVID", "COVID BASELINE", sheetMap),
-      CHIKUNGUNYA: fetchComprehensiveDiseaseBaseline(ss, "CHIKUNGUNYA", "CHIKUNGUNYA BASELINE", sheetMap),
-      TYPHOID: fetchComprehensiveDiseaseBaseline(ss, "TYPHOID", "TYPHOID BASELINE", sheetMap),
-      RABIES: fetchComprehensiveDiseaseBaseline(ss, "RABIES", "RABIES BASELINE", sheetMap),
-      AFP: fetchComprehensiveDiseaseBaseline(ss, "AFP", "AFP BASELINE", sheetMap),
-      DIPH: fetchComprehensiveDiseaseBaseline(ss, "DIPH", "DIPH BASELINE", sheetMap),
-      PERTUSSIS: fetchComprehensiveDiseaseBaseline(ss, "PERTUSSIS", "PERTUSSIS BASELINE", sheetMap),
-      ROTAVIRUS: fetchComprehensiveDiseaseBaseline(ss, "ROTAVIRUS", "ROTAVIRUS BASELINE", sheetMap),
-      CHOLERA: fetchComprehensiveDiseaseBaseline(ss, "CHOLERA", "CHOLERA BASELINE", sheetMap),
-      ILI: fetchComprehensiveDiseaseBaseline(ss, "ILI", "ILI BASELINE", sheetMap),
-      SARI: fetchComprehensiveDiseaseBaseline(ss, "SARI", "SARI BASELINE", sheetMap),
-      HEPA: fetchComprehensiveDiseaseBaseline(ss, "HEPA", "HEPA BASELINE", sheetMap),
-      AMES: fetchComprehensiveDiseaseBaseline(ss, "AMES", "AMES BASELINE", sheetMap),
-      MENINGO: fetchComprehensiveDiseaseBaseline(ss, "MENINGO", "MENINGO BASELINE", sheetMap),
-      HFMD: fetchComprehensiveDiseaseBaseline(ss, "HFMD", "HFMD BASELINE", sheetMap)
-    };
+    // FAST BASELINE SEARCH: Only checks sheets that actually exist in sheetMap
+    const baselines = {};
+    const diseaseList = ["DENGUE", "MEASLES", "LEPTO", "LEPTOSPIROSIS", "COVID19", "COVID", "COVID-19", "CHIKUNGUNYA", "TYPHOID", "RABIES", "AFP", "DIPH", "PERTUSSIS", "ROTAVIRUS", "CHOLERA", "ILI", "SARI", "HEPA", "AMES", "MENINGO", "HFMD"];
+    
+    diseaseList.forEach(d => {
+      const defaultName = (d + " BASELINE").toUpperCase();
+      if (sheetMap[defaultName] || sheetMap[d]) {
+        baselines[d] = fetchComprehensiveDiseaseBaseline(ss, d, defaultName, sheetMap);
+      }
+    });
     
     return {
       data: dashboardRows,
