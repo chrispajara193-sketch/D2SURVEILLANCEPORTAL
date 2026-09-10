@@ -2927,13 +2927,13 @@ if (!firebase.apps.length) {
             try {
               let response;
 
-              // 1. Process Login via fast, direct GET request
+              // 1. Fast, instant Login via GET (bypasses Google POST 302 redirect issues)
               if (methodName === 'processLogin') {
                 const creds = args[0] || {};
                 const query = `?action=login&username=${encodeURIComponent(creds.username || '')}&password=${encodeURIComponent(creds.password || '')}`;
                 response = await fetch(BACKEND_URL + query);
               } 
-              // 2. Heavy data modifications via POST (Save / Upload)
+              // 2. Heavy data modifications (Save Record / Upload CIF)
               else if (methodName === 'saveRecord' || methodName === 'uploadPdsFile') {
                 let payload = { action: methodName };
                 if (methodName === 'saveRecord') {
@@ -2967,7 +2967,14 @@ if (!firebase.apps.length) {
                 response = await fetch(BACKEND_URL + query);
               }
 
-              const result = await response.json();
+              const rawText = await response.text();
+              let result;
+              try {
+                result = JSON.parse(rawText);
+              } catch (parseErr) {
+                throw new Error("Web App returned an HTML page instead of JSON. Ensure 'Who has access' is set to 'Anyone' in your Apps Script deployment.");
+              }
+
               if (successCb) successCb(result);
               return result;
             } catch (err) {

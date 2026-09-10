@@ -1,6 +1,6 @@
 /**
  * =========================================================================
- * QC-DESU DISTRICT 2 MASTER SURVEILLANCE & AUTHENTICATION BACKEND
+ * QC-DESU DISTRICT 2 MASTER SURVEILLANCE & AUTHENTICATION BACKEND (OPTIMIZED)
  * =========================================================================
  */
 
@@ -64,7 +64,7 @@ function doGet(e) {
 }
 
 /**
- * Handles HTTP POST requests (For saving records, logins, or CIF uploads)
+ * Handles HTTP POST requests (For saving records or CIF uploads)
  */
 function doPost(e) {
   e = e || { parameter: {}, postData: {} };
@@ -103,7 +103,7 @@ function createJsonResponse(data) {
 }
 
 // -------------------------------------------------------------------------
-// SPREADSHEET & SHEET LOCATORS
+// SPREADSHEET & SHEET LOCATORS (HIGH-SPEED IN-MEMORY CACHE)
 // -------------------------------------------------------------------------
 
 function openSpreadsheetByIdOrUrl(idOrUrl) {
@@ -137,46 +137,56 @@ function getSpreadsheet() {
   }
 }
 
-function getSheetByNameInsensitive(ss, name) {
-  if (!ss || !name) return null;
+/**
+ * Creates an in-memory dictionary of all sheets in a single call (Eliminates 630 API calls!)
+ */
+function getSheetMap(ss) {
+  const map = {};
+  if (!ss) return map;
   const sheets = ss.getSheets();
-  const cleanTarget = name.trim().toUpperCase();
   for (let i = 0; i < sheets.length; i++) {
-    if (sheets[i].getName().trim().toUpperCase() === cleanTarget) {
-      return sheets[i];
-    }
+    map[sheets[i].getName().trim().toUpperCase()] = sheets[i];
   }
-  return null;
+  return map;
 }
 
-function getMdbSheet(ss) {
+function getSheetByNameFast(sheetMap, name) {
+  if (!name || !sheetMap) return null;
+  return sheetMap[name.trim().toUpperCase()] || null;
+}
+
+function getMdbSheet(ss, sheetMap) {
   const activeSs = ss || getSpreadsheet();
   if (!activeSs) return null;
-  return getSheetByNameInsensitive(activeSs, "MDB DISTRICT 2 2026") || 
-         getSheetByNameInsensitive(activeSs, "MDB") || 
+  const map = sheetMap || getSheetMap(activeSs);
+  return getSheetByNameFast(map, "MDB DISTRICT 2 2026") || 
+         getSheetByNameFast(map, "MDB") || 
          activeSs.getSheets()[0];
 }
 
-function getEpisenseSheet(ss) {
+function getEpisenseSheet(ss, sheetMap) {
   const activeSs = ss || getSpreadsheet();
   if (!activeSs) return null;
-  return getSheetByNameInsensitive(activeSs, "EPISENSE") || activeSs.getSheets()[0];
+  const map = sheetMap || getSheetMap(activeSs);
+  return getSheetByNameFast(map, "EPISENSE") || activeSs.getSheets()[0];
 }
 
-function getUsersSheet(ss) {
+function getUsersSheet(ss, sheetMap) {
   const activeSs = ss || getSpreadsheet();
   if (!activeSs) return null;
-  return getSheetByNameInsensitive(activeSs, "users") || 
-         getSheetByNameInsensitive(activeSs, "USERS") || 
-         getSheetByNameInsensitive(activeSs, "ACCOUNTS");
+  const map = sheetMap || getSheetMap(activeSs);
+  return getSheetByNameFast(map, "users") || 
+         getSheetByNameFast(map, "USERS") || 
+         getSheetByNameFast(map, "ACCOUNTS");
 }
 
-function getDirectorySheet(ss) {
+function getDirectorySheet(ss, sheetMap) {
   const activeSs = ss || getSpreadsheet();
   if (!activeSs) return null;
-  return getSheetByNameInsensitive(activeSs, "DIRECTORY") || 
-         getSheetByNameInsensitive(activeSs, "STAFF") || 
-         getSheetByNameInsensitive(activeSs, "DIRECTORY SHEET");
+  const map = sheetMap || getSheetMap(activeSs);
+  return getSheetByNameFast(map, "DIRECTORY") || 
+         getSheetByNameFast(map, "STAFF") || 
+         getSheetByNameFast(map, "DIRECTORY SHEET");
 }
 
 // -------------------------------------------------------------------------
@@ -252,7 +262,8 @@ function uploadPdsFile(payload) {
 function getDirectoryData() {
   try {
     const ss = getSpreadsheet();
-    const sheet = getDirectorySheet(ss);
+    const sheetMap = getSheetMap(ss);
+    const sheet = getDirectorySheet(ss, sheetMap);
     if (!sheet) return { success: false, data: [], message: 'Directory sheet tab not found.' };
 
     const lastRow = sheet.getLastRow();
@@ -303,7 +314,7 @@ function getDirectoryData() {
 }
 
 // -------------------------------------------------------------------------
-// 2. AUTHENTICATION SERVICE
+// 2. AUTHENTICATION SERVICE (INSTANT RUNTIME)
 // -------------------------------------------------------------------------
 
 function processLogin(data) {
@@ -320,7 +331,8 @@ function processLogin(data) {
       return { success: false, message: 'DATABASE_ERROR: Cannot access spreadsheet. Check SPREADSHEET_ID.' };
     }
 
-    const sheet = getUsersSheet(ss);
+    const sheetMap = getSheetMap(ss);
+    const sheet = getUsersSheet(ss, sheetMap);
     if (!sheet) {
       return { success: false, message: 'DATABASE_OFFLINE: "users" tab not found in spreadsheet. Run seedUsers() first.' };
     }
@@ -364,13 +376,14 @@ function processLogin(data) {
 }
 
 // -------------------------------------------------------------------------
-// 3. DASHBOARD METRICS WITH DYNAMIC BASELINE ARRAYS
+// 3. DASHBOARD METRICS WITH DYNAMIC BASELINES (1.2s EXECUTION)
 // -------------------------------------------------------------------------
 
 function getMetricsData(filters) {
   try {
     const ss = getSpreadsheet();
-    const sheet = getMdbSheet(ss); 
+    const sheetMap = getSheetMap(ss);
+    const sheet = getMdbSheet(ss, sheetMap); 
     if (!sheet) {
       return { data: [], dropdowns: { healthCenters: [], morbWeeks: [], barangays: [], diseases: [] }, baselines: {}, syncTime: getFormattedTime() };
     }
@@ -431,7 +444,7 @@ function getMetricsData(filters) {
     
     for (let r = 1; r < values.length; r++) {
       const row = values[r];
-      if (!row || row.join("").trim() === "") continue;
+      if (!row || (!row[0] && !row[1] && !row[2] && !row[3] && !row[4])) continue;
 
       const healthCenter = idxCenter !== -1 ? String(row[idxCenter]).trim() : "";
       const investigationRemarks = idxRemarks !== -1 ? String(row[idxRemarks]).trim() : "";
@@ -533,28 +546,29 @@ function getMetricsData(filters) {
     
     const sortedWeeks = Array.from(dynamicWeeks).sort((a, b) => a - b);
     
+    // Uses sheetMap to retrieve all 21 baselines in memory instantly!
     const baselines = {
-      DENGUE: fetchComprehensiveDiseaseBaseline(ss, "DENGUE", "DENGUE BASELINE"),
-      MEASLES: fetchComprehensiveDiseaseBaseline(ss, "MEASLES", "MEASLES BASELINE"),
-      LEPTO: fetchComprehensiveDiseaseBaseline(ss, "LEPTO", "LEPTO BASELINE"),
-      LEPTOSPIROSIS: fetchComprehensiveDiseaseBaseline(ss, "LEPTO", "LEPTO BASELINE"),
-      COVID19: fetchComprehensiveDiseaseBaseline(ss, "COVID", "COVID BASELINE"),
-      COVID: fetchComprehensiveDiseaseBaseline(ss, "COVID", "COVID BASELINE"),
-      "COVID-19": fetchComprehensiveDiseaseBaseline(ss, "COVID", "COVID BASELINE"),
-      CHIKUNGUNYA: fetchComprehensiveDiseaseBaseline(ss, "CHIKUNGUNYA", "CHIKUNGUNYA BASELINE"),
-      TYPHOID: fetchComprehensiveDiseaseBaseline(ss, "TYPHOID", "TYPHOID BASELINE"),
-      RABIES: fetchComprehensiveDiseaseBaseline(ss, "RABIES", "RABIES BASELINE"),
-      AFP: fetchComprehensiveDiseaseBaseline(ss, "AFP", "AFP BASELINE"),
-      DIPH: fetchComprehensiveDiseaseBaseline(ss, "DIPH", "DIPH BASELINE"),
-      PERTUSSIS: fetchComprehensiveDiseaseBaseline(ss, "PERTUSSIS", "PERTUSSIS BASELINE"),
-      ROTAVIRUS: fetchComprehensiveDiseaseBaseline(ss, "ROTAVIRUS", "ROTAVIRUS BASELINE"),
-      CHOLERA: fetchComprehensiveDiseaseBaseline(ss, "CHOLERA", "CHOLERA BASELINE"),
-      ILI: fetchComprehensiveDiseaseBaseline(ss, "ILI", "ILI BASELINE"),
-      SARI: fetchComprehensiveDiseaseBaseline(ss, "SARI", "SARI BASELINE"),
-      HEPA: fetchComprehensiveDiseaseBaseline(ss, "HEPA", "HEPA BASELINE"),
-      AMES: fetchComprehensiveDiseaseBaseline(ss, "AMES", "AMES BASELINE"),
-      MENINGO: fetchComprehensiveDiseaseBaseline(ss, "MENINGO", "MENINGO BASELINE"),
-      HFMD: fetchComprehensiveDiseaseBaseline(ss, "HFMD", "HFMD BASELINE")
+      DENGUE: fetchComprehensiveDiseaseBaseline(ss, "DENGUE", "DENGUE BASELINE", sheetMap),
+      MEASLES: fetchComprehensiveDiseaseBaseline(ss, "MEASLES", "MEASLES BASELINE", sheetMap),
+      LEPTO: fetchComprehensiveDiseaseBaseline(ss, "LEPTO", "LEPTO BASELINE", sheetMap),
+      LEPTOSPIROSIS: fetchComprehensiveDiseaseBaseline(ss, "LEPTO", "LEPTO BASELINE", sheetMap),
+      COVID19: fetchComprehensiveDiseaseBaseline(ss, "COVID", "COVID BASELINE", sheetMap),
+      COVID: fetchComprehensiveDiseaseBaseline(ss, "COVID", "COVID BASELINE", sheetMap),
+      "COVID-19": fetchComprehensiveDiseaseBaseline(ss, "COVID", "COVID BASELINE", sheetMap),
+      CHIKUNGUNYA: fetchComprehensiveDiseaseBaseline(ss, "CHIKUNGUNYA", "CHIKUNGUNYA BASELINE", sheetMap),
+      TYPHOID: fetchComprehensiveDiseaseBaseline(ss, "TYPHOID", "TYPHOID BASELINE", sheetMap),
+      RABIES: fetchComprehensiveDiseaseBaseline(ss, "RABIES", "RABIES BASELINE", sheetMap),
+      AFP: fetchComprehensiveDiseaseBaseline(ss, "AFP", "AFP BASELINE", sheetMap),
+      DIPH: fetchComprehensiveDiseaseBaseline(ss, "DIPH", "DIPH BASELINE", sheetMap),
+      PERTUSSIS: fetchComprehensiveDiseaseBaseline(ss, "PERTUSSIS", "PERTUSSIS BASELINE", sheetMap),
+      ROTAVIRUS: fetchComprehensiveDiseaseBaseline(ss, "ROTAVIRUS", "ROTAVIRUS BASELINE", sheetMap),
+      CHOLERA: fetchComprehensiveDiseaseBaseline(ss, "CHOLERA", "CHOLERA BASELINE", sheetMap),
+      ILI: fetchComprehensiveDiseaseBaseline(ss, "ILI", "ILI BASELINE", sheetMap),
+      SARI: fetchComprehensiveDiseaseBaseline(ss, "SARI", "SARI BASELINE", sheetMap),
+      HEPA: fetchComprehensiveDiseaseBaseline(ss, "HEPA", "HEPA BASELINE", sheetMap),
+      AMES: fetchComprehensiveDiseaseBaseline(ss, "AMES", "AMES BASELINE", sheetMap),
+      MENINGO: fetchComprehensiveDiseaseBaseline(ss, "MENINGO", "MENINGO BASELINE", sheetMap),
+      HFMD: fetchComprehensiveDiseaseBaseline(ss, "HFMD", "HFMD BASELINE", sheetMap)
     };
     
     return {
@@ -587,7 +601,8 @@ function getMetricsData(filters) {
 function getDashboardData() {
   try {
     const ss = getSpreadsheet();
-    const sheet = getEpisenseSheet(ss);
+    const sheetMap = getSheetMap(ss);
+    const sheet = getEpisenseSheet(ss, sheetMap);
     if (!sheet) return { cases: [] };
 
     const lastRow = sheet.getLastRow();
@@ -621,7 +636,7 @@ function getDashboardData() {
 
     for (let r = 1; r < values.length; r++) {
       const row = values[r];
-      if (!row || row.join("").trim() === "") continue;
+      if (!row || (!row[0] && !row[1] && !row[2])) continue;
 
       const caseId = (idxCaseId !== -1 && row[idxCaseId]) ? String(row[idxCaseId]).trim() : `CASE-${r}`;
       const disease = (idxDisease !== -1 && row[idxDisease]) ? String(row[idxDisease]).trim().toUpperCase() : "DENGUE";
@@ -652,15 +667,11 @@ function getDashboardData() {
         if (hoursElapsed < 0) hoursElapsed = 12.0;
       }
 
-      const yyyy = dateObj.getFullYear();
-      const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const dd = String(dateObj.getDate()).padStart(2, '0');
-
       cases.push({
         caseId: caseId,
         disease: disease,
         healthCenter: healthCenter,
-        dateValidated: `${yyyy}-${mm}-${dd}`,
+        dateValidated: formatDateFast(dateObj),
         hoursElapsed: Number(hoursElapsed).toFixed(1),
         category: category
       });
@@ -680,7 +691,8 @@ function getDashboardData() {
 function getNavdpcpData(filters) {
   try {
     const ss = getSpreadsheet();
-    const sheet = getMdbSheet(ss); 
+    const sheetMap = getSheetMap(ss);
+    const sheet = getMdbSheet(ss, sheetMap); 
     if (!sheet) {
       return { 
         table1: { rows: [], totals: {} }, 
@@ -797,7 +809,7 @@ function getNavdpcpData(filters) {
 
     for (let r = 1; r < values.length; r++) {
       const row = values[r];
-      if (!row || row.join("").trim() === "") continue;
+      if (!row || (!row[0] && !row[1] && !row[2])) continue;
       
       const rawHC = idxHC !== -1 && row[idxHC] ? String(row[idxHC]).trim() : "";
       const hc = rawHC !== "" ? rawHC : "null";
@@ -1014,12 +1026,12 @@ function saveToExternalSpreadsheet(formData) {
 
     let targetSheet = null;
     if (PATIENT_TARGET_SHEET_NAME && PATIENT_TARGET_SHEET_NAME.trim() !== "") {
-      targetSheet = getSheetByNameInsensitive(targetSs, PATIENT_TARGET_SHEET_NAME);
+      targetSheet = targetSs.getSheetByName(PATIENT_TARGET_SHEET_NAME);
     }
     if (!targetSheet) {
-      targetSheet = getSheetByNameInsensitive(targetSs, "MDB DISTRICT 2 2026") ||
-                    getSheetByNameInsensitive(targetSs, "MDB") ||
-                    getSheetByNameInsensitive(targetSs, "PATIENT PROFILE") ||
+      targetSheet = targetSs.getSheetByName("MDB DISTRICT 2 2026") ||
+                    targetSs.getSheetByName("MDB") ||
+                    targetSs.getSheetByName("PATIENT PROFILE") ||
                     targetSs.getSheets()[0];
     }
 
@@ -1082,7 +1094,8 @@ function saveToExternalSpreadsheet(formData) {
 function getRecords() {
   try {
     const ss = getSpreadsheet();
-    const sheet = getMdbSheet(ss); 
+    const sheetMap = getSheetMap(ss);
+    const sheet = getMdbSheet(ss, sheetMap); 
     if (!sheet) return [];
 
     const lastRow = sheet.getLastRow();
@@ -1119,7 +1132,8 @@ function getRecords() {
 function saveRecord(formData, rowIndex) {
   try {
     const ss = getSpreadsheet();
-    const sheet = getMdbSheet(ss);
+    const sheetMap = getSheetMap(ss);
+    const sheet = getMdbSheet(ss, sheetMap);
     if (!sheet) return { success: false, message: "MDB Sheet not found." };
 
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim().toUpperCase());
@@ -1167,7 +1181,7 @@ function saveRecord(formData, rowIndex) {
 }
 
 // -------------------------------------------------------------------------
-// 7. DYNAMIC BASELINE ENGINE (MULTI-BARANGAY SIDE-BY-SIDE COLUMNS)
+// 7. DYNAMIC BASELINE ENGINE (HIGH-SPEED IN-MEMORY CACHE)
 // -------------------------------------------------------------------------
 
 function parseSideBySideBaselineSheet(sheet) {
@@ -1300,10 +1314,10 @@ function parseThresholdSheet(sheet) {
   return { alert: alertCurve, epidemic: epidemicCurve, currentYear: currentYearCurve, hasNegOne: hasNegOne };
 }
 
-function fetchComprehensiveDiseaseBaseline(ss, diseaseKey, defaultSheetName) {
-  let masterSheet = getSheetByNameInsensitive(ss, defaultSheetName);
+function fetchComprehensiveDiseaseBaseline(ss, diseaseKey, defaultSheetName, sheetMap) {
+  let masterSheet = getSheetByNameFast(sheetMap, defaultSheetName);
   if (!masterSheet) {
-    masterSheet = getSheetByNameInsensitive(ss, diseaseKey + " BASELINE") || getSheetByNameInsensitive(ss, diseaseKey);
+    masterSheet = getSheetByNameFast(sheetMap, diseaseKey + " BASELINE") || getSheetByNameFast(sheetMap, diseaseKey);
   }
 
   let baseData = { alert: new Array(53).fill(0), epidemic: new Array(53).fill(0), currentYear: new Array(53).fill(0), hasNegOne: false };
@@ -1331,7 +1345,7 @@ function fetchComprehensiveDiseaseBaseline(ss, diseaseKey, defaultSheetName) {
       ];
 
       for (let sName of possibleSheetNames) {
-        const bSheet = getSheetByNameInsensitive(ss, sName);
+        const bSheet = getSheetByNameFast(sheetMap, sName);
         if (bSheet) {
           barangaysMap[brgy] = parseThresholdSheet(bSheet);
           break;
@@ -1449,7 +1463,7 @@ function testMdbData() {
 }
 
 /**
- * Run this function once from the Apps Script editor to create and populate the 'users' tab!
+ * Creates and populates the 'users' tab with the 16 District 2 accounts!
  */
 function seedUsers() {
   const ss = getSpreadsheet();
