@@ -1123,6 +1123,17 @@ function getRecords() {
   }
 }
 
+function toMmDdYyyy(val) {
+  if (!val) return "";
+  if (typeof val === 'string') {
+    const match = val.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      return `${match[2]}/${match[3]}/${match[1]}`; // MM/DD/YYYY
+    }
+  }
+  return val;
+}
+
 function saveRecord(formData, rowIndex) {
   try {
     const ss = getSpreadsheet();
@@ -1159,6 +1170,9 @@ function saveRecord(formData, rowIndex) {
       for (let key in formData) {
         if (key.trim().toUpperCase() === header) {
           val = formData[key];
+        if (header.includes("DATE") || header.includes("ATTENDANCE") || header.includes("ONSET")) {
+          val = toMmDdYyyy
+        }  
           break;
         }
       }

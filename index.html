@@ -2700,12 +2700,12 @@
             <div class="portal-section-title">ADDRESS & MAPPING</div>
             <div class="portal-form-grid">
               <div class="portal-form-group"><label>BARANGAY *</label><input type="text" id="BARANGAY" required></div>
-              <div class="portal-form-group"><label>HOUSE # / BLK/LT</label><input type="text" id="HOUSE # / BLK/LT"></div>
-              <div class="portal-form-group"><label>STREET</label><input type="text" id="STREET"></div>
+              <div class="portal-form-group"><label>HOUSE # / BLK/LT</label><input type="text" id="HOUSE # / BLK/LT" oninput="autoUpdateCompleteAddress"></div>
+              <div class="portal-form-group"><label>STREET</label><input type="text" id="STREET" oninput="autoUpdateCompleteAddress"></div>
               <div class="portal-form-group"><label>AREA LOCATION</label><input type="text" id="AREA LOCATION"></div>
               <div class="portal-form-group">
                 <label>COMPLETE ADDRESS</label>
-                <input type="text" id="COMPLETE ADDRESS" readonly class="view-mode-input" title="View mode only">
+                <input type="text" id="COMPLETE ADDRESS" readonly class="view-mode-input" title="Auto-generated from House # and Street">
               </div>
               <div class="portal-form-group"><label>GEO_MAPPING (MAP COORDS)</label><input type="text" id="GEO_MAPPING (CORDINATES THRU G-MAPS)" placeholder="14.65, 121.03"></div>
             </div>
@@ -2719,7 +2719,7 @@
               <div class="portal-form-group"><label>SECTION</label><input type="text" id="SECTION"></div>
               <div class="portal-form-group">
                 <label>SCHOOL TYPE</label>
-                <select id="PRIVATE_OR_PUBLIC_OR_DELIST/NON-RES">
+                <select id="PRIVATE_OR_PUBLIC">
                   <option value="">-- Select --</option>
                   <option value="Private">Private</option>
                   <option value="Public">Public</option>
@@ -3891,13 +3891,24 @@ const PORTAL_DOCUMENTS = [
       }
 }
 
+    function autoUpdateCompleteAddress() {
+      const house = (document.getElementById("HOUSE # / BLK/LT")?.value || "").trim();
+      const street = (document.getElementById("STREET")?.value || "").trim();
+      const completeAddressField = document.getElementById("COMPLETE ADDRESS");
+
+    if (!completeAddressField) return;
+
+      const parts = [house, street].filter(Boolean);
+      completeAddressField.value = parts.join(", ");
+}
+
     const HEADERS = [
       "HEALTH CENTER DESIGNATION", "CATEGORY", "INVESTIGATION REMARKS", "DISEASE_NAME",
       "CASE_ID", "FULL NAME (LN,FN,MD)", "GENDER", "BIRTH DATE", "AGE_IN_YEARS",
       "BARANGAY", "HOUSE # / BLK/LT", "STREET", "AREA LOCATION", "COMPLETE ADDRESS",
       "CONTACT #", "GUARDIAN NAME", "CESU DATE ADDED", "DATE INVESTIGATED",
       "FACILITY_NAME", "NAME OF SCHOOL / WORK PLACE", "SCHOOL BARANGAY", "GRADE LEVEL",
-      "SECTION", "PRIVATE_OR_PUBLIC_OR_DELIST/NON-RES", "NUMBER OF CHILDREN IN CLASS", "DATE OF LAST ATTENDANCE",
+      "SECTION", "PRIVATE_OR_PUBLIC", "NUMBER OF CHILDREN IN CLASS", "DATE OF LAST ATTENDANCE",
       "OCCUPATION", "OUTCOME", "CASE_CLASSIFICATION", "CLINICAL_CLASSIFICATION",
       "DATE SPECIMEN COLLECTION", "DATE ONSET", "DATE_OF_EXPOSURE", "VACCINE DATE",
       "RECEIVED VACCINE", "PLACE OF EXPOSURE", "NATURE OF EXPOSURE", "MORBIDITY_WEEK",
@@ -5462,18 +5473,30 @@ const PORTAL_DOCUMENTS = [
     }
 
     function populateForEdit(rowIndex) {
-      resetMasterForm();
-      const record = cachedRecords.find(r => (r._rowIndex || r.rowIndex) === rowIndex);
-      if (!record) return;
-      document.getElementById("rowIndex").value = record._rowIndex || record.rowIndex;
-      HEADERS.forEach(h => {
-        const field = document.getElementById(h);
-        if (field) field.value = record[h] || "";
-      });
-      document.getElementById("submitBtn").innerHTML = `<i class="fa-solid fa-pen-to-square me-1"></i> Update Record`;
-      document.getElementById("cancelBtn").style.display = "inline-block";
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+  resetMasterForm();
+  const record = cachedRecords.find(r => (r._rowIndex || r.rowIndex) === rowIndex);
+  if (!record) return;
+  document.getElementById("rowIndex").value = record._rowIndex || record.rowIndex;
+  
+  HEADERS.forEach(h => {
+    const field = document.getElementById(h);
+    if (field) {
+      let val = record[h] || "";
+      // If the field is a date picker and the sheet gave MM/DD/YYYY, convert to YYYY-MM-DD so it displays properly
+      if (field.type === 'date' && val.includes("/")) {
+        const parts = val.split("/");
+        if (parts.length === 3) {
+          val = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+        }
+      }
+      field.value = val;
     }
+  });
+
+  document.getElementById("submitBtn").innerHTML = `<i class="fa-solid fa-pen-to-square me-1"></i> Update Record`;
+  document.getElementById("cancelBtn").style.display = "inline-block";
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
     function resetMasterForm() {
       const form = document.getElementById("dataForm");
