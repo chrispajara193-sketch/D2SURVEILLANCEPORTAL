@@ -2962,7 +2962,14 @@ if (!firebase.apps.length) {
                 response = await fetch(BACKEND_URL + query);
               }
 
-              const result = await response.json();
+              const rawText = await response.text();
+              let result;
+              try {
+                result = JSON.parse(rawText);
+              } catch (parseErr) {
+                throw new Error("Web App returned an HTML page instead of JSON. Make sure your Google Apps Script deployment has 'Who has access' set to 'Anyone'.");
+              }
+
               if (successCb) successCb(result);
               return result;
             } catch (err) {
