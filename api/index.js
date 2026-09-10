@@ -445,7 +445,9 @@ function getMetricsData(filters) {
       const row = values[r];
       if (!row || (!row[0] && !row[1] && !row[2] && !row[3] && !row[4])) continue;
 
-      const healthCenter = idxCenter !== -1 ? String(row[idxCenter]).trim() : "";
+      let healthCenter = idxCenter !== -1 ? String(row[idxCenter]).trim() : "";
+      if (!healthCenter) healthCenter = "UNASSIGNED";
+
       const investigationRemarks = idxRemarks !== -1 ? String(row[idxRemarks]).trim() : "";
       const barangay = idxBarangay !== -1 ? String(row[idxBarangay]).trim() : "";
       const outcome = idxOutcome !== -1 ? String(row[idxOutcome]).trim() : "";
@@ -453,8 +455,8 @@ function getMetricsData(filters) {
       const rawClassValue = idxClass !== -1 ? String(row[idxClass]).trim().toUpperCase() : "";
       const rawRemarksValue = investigationRemarks.toUpperCase();
 
-      if (!barangay && !diseaseName && !healthCenter) continue;
-      if (!healthCenter || healthCenter === "") continue;
+      // Only skip if the row is completely empty or discarded
+      if (!diseaseName && !barangay) continue;
       
       if (
         rawRemarksValue.includes("DELIST") || rawRemarksValue.includes("NON-RES") || 
@@ -1120,6 +1122,8 @@ function saveRecord(formData, rowIndex) {
 
     saveToExternalSpreadsheet(formData);
 
+    if (typeof syncDataToFirebase === 'function') syncDataToFirebase();
+
     return { success: true, message: `Record successfully ${isNewRow ? 'saved' : 'updated'}!` };
   } catch (err) {
     return { success: false, message: `Failed to save: ${err.message}` };
@@ -1544,4 +1548,8 @@ function seedUsers() {
   sheet.autoResizeColumns(1, headers.length);
 
   Logger.log("✅ 16 District 2 user accounts created successfully!");
+}
+
+function onSpreadsheetChange(e) {
+  syncDataToFirebase();
 }
