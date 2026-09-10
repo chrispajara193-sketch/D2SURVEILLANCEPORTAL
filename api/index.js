@@ -185,16 +185,21 @@ function getDirectorySheet(ss) {
 }
 
 // -------------------------------------------------------------------------
-// DRIVE STORAGE HELPERS (FOR DIRECTORY PHOTOS & PDS/CIF ATTACHMENTS)
+// DRIVE STORAGE HELPERS (FOR PDS/CIF ATTACHMENTS)
 // -------------------------------------------------------------------------
 
 function getOrCreateDriveFolder(folderName) {
-  const folders = DriveApp.getFoldersByName(folderName);
+  const targetName = folderName || PDS_CIF_FOLDER || "D2_DESU_CIF_Attachments";
+  const folders = DriveApp.getFoldersByName(targetName);
   if (folders.hasNext()) {
     return folders.next();
   }
-  const newFolder = DriveApp.createFolder(folderName);
-  newFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  const newFolder = DriveApp.createFolder(targetName);
+  try {
+    newFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch(e) {
+    Logger.log("Notice: Organization policy restricted link sharing: " + e.message);
+  }
   return newFolder;
 }
 
@@ -211,7 +216,7 @@ function convertToDirectThumbnailUrl(url) {
 }
 
 // -------------------------------------------------------------------------
-// 1. DIRECTORY SERVICE & PHOTO UPLOADS
+// 1. DIRECTORY SERVICE
 // -------------------------------------------------------------------------
 
 function getDirectoryData() {
@@ -267,65 +272,6 @@ function getDirectoryData() {
   }
 }
 
-function uploadDirectoryPhoto(payload) {
-  try {
-    if (!payload || !payload.base64Data) {
-      return { success: false, message: "No image file payload provided." };
-    }
-
-    const ss = getSpreadsheet();
-    const sheet = getDirectorySheet(ss);
-    if (!sheet) return { success: false, message: "Directory sheet not found." };
-
-    const rawData = payload.base64Data;
-    const staffName = payload.staffName || "Staff";
-    const rowIndex = parseInt(payload.rowIndex, 10);
-
-    const matches = rawData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-    if (!matches || matches.length !== 3) {
-      return { success: false, message: "Invalid image base64 format." };
-    }
-
-    const contentType = matches[1];
-    const base64Content = matches[2];
-    const decodedBytes = Utilities.base64Decode(base64Content);
-    const extension = contentType.split('/')[1] || 'jpg';
-    const fileName = `Avatar_${staffName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().getTime()}.${extension}`;
-
-    const blob = Utilities.newBlob(decodedBytes, contentType, fileName);
-    const folder = getOrCreateDriveFolder(DIRECTORY_PHOTO_FOLDER);
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    const directUrl = `https://lh3.googleusercontent.com/d/${file.getId()}`;
-
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim().toUpperCase());
-    let picCol = headers.findIndex(h => h.includes("PICTURE") || h.includes("PHOTO") || h.includes("IMAGE") || h.includes("AVATAR"));
-
-    if (picCol === -1) {
-      picCol = headers.length;
-      sheet.getRange(1, picCol + 1).setValue("PICTURE");
-    }
-
-    if (rowIndex && rowIndex > 1 && rowIndex <= sheet.getLastRow()) {
-      sheet.getRange(rowIndex, picCol + 1).setValue(directUrl);
-    } else {
-      const allRows = sheet.getDataRange().getValues();
-      for (let r = 1; r < allRows.length; r++) {
-        if (String(allRows[r][0] || '').trim().toUpperCase() === staffName.toUpperCase()) {
-          sheet.getRange(r + 1, picCol + 1).setValue(directUrl);
-          break;
-        }
-      }
-    }
-
-    return { success: true, url: directUrl, message: "Staff photo updated successfully!" };
-  } catch (err) {
-    Logger.log("uploadDirectoryPhoto error: " + err.toString());
-    return { success: false, message: "Photo upload failed: " + err.message };
-  }
-}
-
 function uploadPdsFile(payload) {
   try {
     if (!payload || !payload.base64Data) {
@@ -346,9 +292,18 @@ function uploadPdsFile(payload) {
       blob = Utilities.newBlob(rawData, "application/octet-stream", `CIF_${caseId}_${originalName}`);
     }
 
-    const folder = getOrCreateDriveFolder(PDS_CIF_FOLDER);
+    const targetFolderName = (typeof PDS_CIF_FOLDER !== 'undefined' && PDS_CIF_FOLDER) 
+      ? PDS_CIF_FOLDER 
+      : "D2_DESU_CIF_Attachments";
+
+    const folder = getOrCreateDriveFolder(targetFolderName);
     const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch(e) {
+      Logger.log("Notice: Organization policy restricted link sharing: " + e.message);
+    }
 
     return { success: true, url: file.getUrl(), message: "CIF file uploaded successfully!" };
   } catch (err) {
@@ -897,7 +852,7 @@ function getNavdpcpData(filters) {
 /**
  * Saves or updates patient profile data into the designated external spreadsheet by ID or URL
  */
-function saveToExternalSpreadsheet(formData, rowIndex) {
+function saveToExternalSpreadsheet(formData) {
   if (!PATIENT_SPREADSHEET_ID_OR_URL || PATIENT_SPREADSHEET_ID_OR_URL.trim() === "" || PATIENT_SPREADSHEET_ID_OR_URL.indexOf("PASTE_YOUR_") !== -1) {
     return; // No external target configured
   }
@@ -951,16 +906,16 @@ function saveToExternalSpreadsheet(formData, rowIndex) {
 
     // Check if record exists by CASE_ID to update it, otherwise append new row
     let targetRowIndex = -1;
-    const caseId = formData["CASE_ID"] || formData["CASE ID"] || "";
+    const caseId = (formData["CASE_ID"] || formData["CASE ID"] || "").trim().toUpperCase();
 
-    if (caseId && caseId.trim() !== "" && targetSheet.getLastRow() > 1) {
+    if (caseId && targetSheet.getLastRow() > 1) {
       let caseIdColIdx = headers.indexOf("CASE_ID");
       if (caseIdColIdx === -1) caseIdColIdx = headers.indexOf("CASE ID");
       
       if (caseIdColIdx !== -1) {
         const idColValues = targetSheet.getRange(2, caseIdColIdx + 1, targetSheet.getLastRow() - 1, 1).getValues();
         for (let i = 0; i < idColValues.length; i++) {
-          if (String(idColValues[i][0]).trim().toUpperCase() === caseId.trim().toUpperCase()) {
+          if (String(idColValues[i][0]).trim().toUpperCase() === caseId) {
             targetRowIndex = i + 2;
             break;
           }
@@ -981,31 +936,13 @@ function saveToExternalSpreadsheet(formData, rowIndex) {
   }
 }
 
+/**
+ * Loads patient records from the primary MDB master database
+ */
 function getRecords() {
   try {
-    let ss = getSpreadsheet();
-    let sheet = getMdbSheet(ss);
-
-    // If external spreadsheet is specified and populated, read from it
-    if (PATIENT_SPREADSHEET_ID_OR_URL && PATIENT_SPREADSHEET_ID_OR_URL.indexOf("PASTE_YOUR_") === -1) {
-      const extSs = openSpreadsheetByIdOrUrl(PATIENT_SPREADSHEET_ID_OR_URL);
-      if (extSs) {
-        let extSheet = null;
-        if (PATIENT_TARGET_SHEET_NAME && PATIENT_TARGET_SHEET_NAME.trim() !== "") {
-          extSheet = getSheetByNameInsensitive(extSs, PATIENT_TARGET_SHEET_NAME);
-        }
-        if (!extSheet) {
-          extSheet = getSheetByNameInsensitive(extSs, "MDB DISTRICT 2 2026") || 
-                     getSheetByNameInsensitive(extSs, "MDB") || 
-                     getSheetByNameInsensitive(extSs, "PATIENT PROFILE") ||
-                     extSs.getSheets()[0];
-        }
-        if (extSheet && extSheet.getLastRow() > 1) {
-          sheet = extSheet;
-        }
-      }
-    }
-
+    const ss = getSpreadsheet();
+    const sheet = getMdbSheet(ss);
     if (!sheet) return [];
 
     const lastRow = sheet.getLastRow();
@@ -1045,9 +982,26 @@ function saveRecord(formData, rowIndex) {
 
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim().toUpperCase());
 
-    let targetRow = rowIndex;
-    if (!targetRow || isNaN(targetRow) || targetRow <= 1) {
-      targetRow = sheet.getLastRow() + 1;
+    // Look up existing row by CASE_ID first to prevent overwriting wrong rows
+    let targetRow = null;
+    const caseId = (formData["CASE_ID"] || formData["CASE ID"] || "").trim().toUpperCase();
+
+    if (caseId && sheet.getLastRow() > 1) {
+      let caseIdColIdx = headers.indexOf("CASE_ID");
+      if (caseIdColIdx === -1) caseIdColIdx = headers.indexOf("CASE ID");
+      if (caseIdColIdx !== -1) {
+        const idColValues = sheet.getRange(2, caseIdColIdx + 1, sheet.getLastRow() - 1, 1).getValues();
+        for (let i = 0; i < idColValues.length; i++) {
+          if (String(idColValues[i][0]).trim().toUpperCase() === caseId) {
+            targetRow = i + 2;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!targetRow) {
+      targetRow = (rowIndex && !isNaN(rowIndex) && rowIndex > 1) ? rowIndex : sheet.getLastRow() + 1;
     }
 
     const rowValues = [];
@@ -1066,7 +1020,7 @@ function saveRecord(formData, rowIndex) {
     sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
 
     // 2. Synchronize to Secondary / External Spreadsheet by ID or URL
-    saveToExternalSpreadsheet(formData, rowIndex);
+    saveToExternalSpreadsheet(formData);
 
     return { success: true, message: `Record successfully ${rowIndex ? 'updated' : 'saved'}!` };
   } catch (err) {
