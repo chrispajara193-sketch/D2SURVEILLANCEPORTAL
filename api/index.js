@@ -1143,6 +1143,7 @@ function saveRecord(formData, rowIndex) {
 
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim().toUpperCase());
 
+    // 1. Locate existing row by CASE_ID first
     let targetRow = null;
     const caseId = (formData["CASE_ID"] || formData["CASE ID"] || "").trim().toUpperCase();
 
@@ -1160,29 +1161,64 @@ function saveRecord(formData, rowIndex) {
       }
     }
 
+    const isNewRow = (!targetRow && (!rowIndex || isNaN(rowIndex) || rowIndex <= 1));
     if (!targetRow) {
       targetRow = (rowIndex && !isNaN(rowIndex) && rowIndex > 1) ? rowIndex : sheet.getLastRow() + 1;
     }
 
+    // List of columns governed by Google Sheets formulas
+    const formulaColumns = ["COMPLETE ADDRESS", "MONTHS", "MORBIDITY_WEEK", "MORBIDITY WEEK"];
+
+    // Check existing formulas in the row above and the target row
+    const prevRow = Math.max(1, targetRow - 1);
+    const prevFormulas = (prevRow > 1) ? sheet.getRange(prevRow, 1, 1, headers.length).getFormulas()[0] : [];
+    const existingFormulas = (!isNewRow && targetRow <= sheet.getLastRow()) 
+      ? sheet.getRange(targetRow, 1, 1, headers.length).getFormulas()[0] 
+      : [];
+
     const rowValues = [];
-    headers.forEach(header => {
+    headers.forEach((header, colIdx) => {
+      // If updating and cell already has a formula, preserve it!
+      if (existingFormulas[colIdx]) {
+        rowValues.push(existingFormulas[colIdx]);
+        return;
+      }
+
+      // If it's a formula column on a new row, leave blank for copyTo
+      if (formulaColumns.includes(header) || (isNewRow && prevFormulas[colIdx])) {
+        rowValues.push("");
+        return;
+      }
+
       let val = "";
       for (let key in formData) {
         if (key.trim().toUpperCase() === header) {
           val = formData[key];
-        if (header.includes("DATE") || header.includes("ATTENDANCE") || header.includes("ONSET")) {
-          val = toMmDdYyyy
-        }  
+          if (header.includes("DATE") || header.includes("ATTENDANCE") || header.includes("ONSET")) {
+            val = toMmDdYyyy(val);
+          }
           break;
         }
       }
       rowValues.push(val);
     });
 
+    // 2. Write the user-entered values
     sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
+
+    // 3. For new rows, automatically drag down/copy the formulas from row above!
+    if (isNewRow && prevRow > 1) {
+      headers.forEach((header, colIdx) => {
+        if (prevFormulas[colIdx] || formulaColumns.includes(header)) {
+          sheet.getRange(prevRow, colIdx + 1).copyTo(sheet.getRange(targetRow, colIdx + 1));
+        }
+      });
+    }
+
+    // 4. Synchronize to external spreadsheet
     saveToExternalSpreadsheet(formData);
 
-    return { success: true, message: `Record successfully ${rowIndex ? 'updated' : 'saved'}!` };
+    return { success: true, message: `Record successfully ${isNewRow ? 'saved' : 'updated'}!` };
   } catch (err) {
     return { success: false, message: `Failed to save: ${err.message}` };
   }
