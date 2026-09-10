@@ -2925,17 +2925,20 @@ if (!firebase.apps.length) {
 
           return async function(...args) {
             try {
-              const postMethods = ['saveRecord', 'processLogin', 'uploadDirectoryPhoto', 'uploadPdsFile'];
-              const isPost = postMethods.includes(methodName);
               let response;
 
-              if (isPost) {
+              // 1. Process Login via fast, direct GET request
+              if (methodName === 'processLogin') {
+                const creds = args[0] || {};
+                const query = `?action=login&username=${encodeURIComponent(creds.username || '')}&password=${encodeURIComponent(creds.password || '')}`;
+                response = await fetch(BACKEND_URL + query);
+              } 
+              // 2. Heavy data modifications via POST (Save / Upload)
+              else if (methodName === 'saveRecord' || methodName === 'uploadPdsFile') {
                 let payload = { action: methodName };
                 if (methodName === 'saveRecord') {
                   payload.formData = args[0];
                   payload.rowIndex = args[1];
-                } else if (methodName === 'processLogin') {
-                  payload = { action: 'login', ...args[0] };
                 } else {
                   payload = args[0] || {};
                   payload.action = methodName;
@@ -2946,7 +2949,9 @@ if (!firebase.apps.length) {
                   body: JSON.stringify(payload),
                   headers: { 'Content-Type': 'text/plain;charset=utf-8' }
                 });
-              } else {
+              } 
+              // 3. All dashboard & database GET requests
+              else {
                 let action = 'getMetrics';
                 if (methodName === 'getDashboardData') action = 'getDashboard';
                 else if (methodName === 'getDirectoryData') action = 'getDirectory';
@@ -2962,14 +2967,7 @@ if (!firebase.apps.length) {
                 response = await fetch(BACKEND_URL + query);
               }
 
-              const rawText = await response.text();
-              let result;
-              try {
-                result = JSON.parse(rawText);
-              } catch (parseErr) {
-                throw new Error("Web App returned an HTML page instead of JSON. Make sure your Google Apps Script deployment has 'Who has access' set to 'Anyone'.");
-              }
-
+              const result = await response.json();
               if (successCb) successCb(result);
               return result;
             } catch (err) {
