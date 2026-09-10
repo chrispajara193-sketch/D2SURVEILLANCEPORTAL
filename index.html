@@ -2624,19 +2624,19 @@
               </div>
               <div class="portal-form-group">
                 <label>CATEGORY</label>
-                <input type="text" id="CATEGORY" readonly class="view-mode-input" title="View mode only">
+                <input type="text" id="CATEGORY" readonly class="view-mode-input" title="Auto-filled by formula">
               </div>
               <div class="portal-form-group">
                 <label>DISEASE NAME</label>
-                <input type="text" id="DISEASE_NAME" readonly class="view-mode-input" title="View mode only">
+                <input type="text" id="DISEASE_NAME" readonly class="view-mode-input" title="Auto-filled by formula">
               </div>
               <div class="portal-form-group">
                 <label>CASE ID</label>
-                <input type="text" id="CASE_ID" readonly class="view-mode-input" title="View mode only">
+                <input type="text" id="CASE_ID" readonly class="view-mode-input" title="Auto-filled by formula">
               </div>
               <div class="portal-form-group">
                 <label>CESU DATE ADDED</label>
-                <input type="date" id="CESU DATE ADDED" readonly class="view-mode-input" title="View mode only">
+                <input type="date" id="CESU DATE ADDED" readonly class="view-mode-input" title="Auto-filled by formula">
               </div>
               <div class="portal-form-group"><label>DATE INVESTIGATED</label><input type="date" id="DATE INVESTIGATED"></div>
               <div class="portal-form-group">
@@ -2666,7 +2666,7 @@
             <div class="portal-form-grid">
               <div class="portal-form-group">
                 <label>FULL NAME (LN, FN, MD)</label>
-                <input type="text" id="FULL NAME (LN,FN,MD)" placeholder="Last, First, Middle" readonly class="view-mode-input" title="View mode only">
+                <input type="text" id="FULL NAME (LN,FN,MD)" placeholder="Last, First, Middle" readonly class="view-mode-input" title="Auto-filled by formula">
               </div>
               <div class="portal-form-group">
                 <label>GENDER</label>
@@ -2682,15 +2682,15 @@
               </div>
               <div class="portal-form-group">
                 <label>AGE IN YEARS</label>
-                <input type="number" id="AGE_IN_YEARS" readonly class="view-mode-input" title="Auto-calculated from Birth Date">
+                <input type="number" id="AGE_IN_YEARS" readonly class="view-mode-input" title="Auto-filled by formula">
               </div>
               <div class="portal-form-group">
                 <label>AGE IN MONTHS</label>
-                <input type="number" id="AGE IN MONTHS" readonly class="view-mode-input" title="Auto-calculated from Birth Date">
+                <input type="number" id="AGE IN MONTHS" readonly class="view-mode-input" title="Auto-filled by formula">
               </div>
               <div class="portal-form-group">
                 <label>AGE GROUP</label>
-                <input type="text" id="AGE_GROUP" readonly class="view-mode-input" title="Auto-calculated from Birth Date">
+                <input type="text" id="AGE_GROUP" readonly class="view-mode-input" title="Auto-filled by formula">
               </div>
               <div class="portal-form-group"><label>GUARDIAN NAME</label><input type="text" id="GUARDIAN NAME"></div>
               <div class="portal-form-group"><label>CONTACT #</label><input type="text" id="CONTACT #"></div>
@@ -2699,20 +2699,20 @@
 
             <div class="portal-section-title">ADDRESS & MAPPING</div>
             <div class="portal-form-grid">
-              <div class="portal-form-group"><label>BARANGAY *</label><input type="text" id="BARANGAY" required></div>
+              <div class="portal-form-group"><label>BARANGAY *</label><input type="text" id="BARANGAY" readonly class="view-mode-input" title="Auto-filled by formula></div>
               <div class="portal-form-group"><label>HOUSE # / BLK/LT</label><input type="text" id="HOUSE # / BLK/LT"></div>
               <div class="portal-form-group"><label>STREET</label><input type="text" id="STREET"></div>
               <div class="portal-form-group"><label>AREA LOCATION</label><input type="text" id="AREA LOCATION"></div>
               <div class="portal-form-group">
                 <label>COMPLETE ADDRESS</label>
-                <input type="text" id="COMPLETE ADDRESS" readonly class="view-mode-input" title="Auto-generated from House # and Street">
+                <input type="text" id="COMPLETE ADDRESS" readonly class="view-mode-input" title="Auto-filled by formula">
               </div>
               <div class="portal-form-group"><label>GEO_MAPPING (MAP COORDS)</label><input type="text" id="GEO_MAPPING (CORDINATES THRU G-MAPS)" placeholder="14.65, 121.03"></div>
             </div>
 
             <div class="portal-section-title">SCHOOL & INSTITUTION DETAILS</div>
             <div class="portal-form-grid">
-              <div class="portal-form-group"><label>FACILITY NAME</label><input type="text" id="FACILITY_NAME"></div>
+              <div class="portal-form-group"><label>FACILITY NAME</label><input type="text" id="FACILITY_NAME" readonly class=":view-mode-input" title="Auto-filled by formula"></div>
               <div class="portal-form-group"><label>NAME OF SCHOOL / WORK PLACE</label><input type="text" id="NAME OF SCHOOL / WORK PLACE"></div>
               <div class="portal-form-group"><label>SCHOOL BARANGAY</label><input type="text" id="SCHOOL BARANGAY"></div>
               <div class="portal-form-group"><label>GRADE LEVEL</label><input type="text" id="GRADE LEVEL"></div>
@@ -2721,8 +2721,8 @@
                 <label>SCHOOL TYPE</label>
                 <select id="PRIVATE_OR_PUBLIC">
                   <option value="">-- Select --</option>
-                  <option value="Private">Private</option>
-                  <option value="Public">Public</option>
+                  <option value="Private">PRIVATE</option>
+                  <option value="Public">PUBLIC</option>
                   <option value="Delist/Non-Res">Delist/Non-Res</option>
                 </select>
               </div>
@@ -2734,7 +2734,7 @@
             <div class="portal-form-grid">
               <div class="portal-form-group">
                 <label>DATE ONSET</label>
-                <input type="date" id="DATE ONSET" readonly class="view-mode-input" title="View mode only">
+                <input type="date" id="DATE ONSET" readonly class="view-mode-input" title="Auto-filled by formula">
               </div>
               <div class="portal-form-group"><label>CASE CLASSIFICATION</label><input type="text" id="CASE_CLASSIFICATION"></div>
               <div class="portal-form-group"><label>CLINICAL CLASSIFICATION</label><input type="text" id="CLINICAL_CLASSIFICATION"></div>
@@ -2792,11 +2792,11 @@
               <div class="portal-form-group"><label>VACCINE DATE</label><input type="date" id="VACCINE DATE"></div>
               <div class="portal-form-group">
                 <label>MORBIDITY WEEK</label>
-                <input type="text" id="MORBIDITY_WEEK" readonly class="view-mode-input" title="View mode only">
+                <input type="text" id="MORBIDITY_WEEK" readonly class="view-mode-input" title="Auto-filled by formula">
               </div>
               <div class="portal-form-group">
                 <label>MONTHS</label>
-                <input type="text" id="MONTHS" readonly class="view-mode-input" title="View mode only">
+                <input type="text" id="MONTHS" readonly class="view-mode-input" title="Auto-filled by formula">
               </div>
             </div>
 

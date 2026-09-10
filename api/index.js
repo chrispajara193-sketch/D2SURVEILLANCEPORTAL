@@ -25,50 +25,53 @@ const DISTRICT_2_BARANGAYS = [
   "PAYATAS"
 ];
 
+// 🛡️ MASTER LIST OF ALL 13 FORMULATED COLUMNS
+const FORMULA_COLUMNS = [
+  "DISEASE_NAME",
+  "CASE_ID",
+  "FULL NAME (LN,FN,MD)",
+  "AGE_IN_YEARS",
+  "BARANGAY",
+  "COMPLETE ADDRESS",
+  "CESU DATE ADDED",
+  "FACILITY_NAME",
+  "DATE ONSET",
+  "MORBIDITY_WEEK",
+  "MORBIDITY WEEK",
+  "MONTHS",
+  "AGE_GROUP",
+  "AGE IN MONTHS"
+];
+
 /**
- * Handles HTTP GET requests (For web app, standalone views, and VS Code API calls)
+ * Handles HTTP GET requests (Safe wrapper: NEVER returns raw HTML error pages)
  */
 function doGet(e) {
   try {
     e = e || { parameter: {} };
     const action = (e.parameter && e.parameter.action) ? String(e.parameter.action).trim() : '';
 
-    if (action === 'getMetrics') {
-      return createJsonResponse(getMetricsData(e.parameter));
-    }
-    
-    if (action === 'getDashboard') {
-      return createJsonResponse(getDashboardData());
-    }
-
-    if (action === 'getDirectory') {
-      return createJsonResponse(getDirectoryData());
-    }
-
+    if (action === 'getMetrics') return createJsonResponse(getMetricsData(e.parameter));
+    if (action === 'getDashboard') return createJsonResponse(getDashboardData());
+    if (action === 'getDirectory') return createJsonResponse(getDirectoryData());
     if (action === 'login') {
       const loginData = { username: e.parameter.username, password: e.parameter.password };
       return createJsonResponse(processLogin(loginData));
     }
-
-    if (action === 'getRecords') {
-      return createJsonResponse(getRecords());
-    }
-
-    if (action === 'getNavdpcp') {
-      return createJsonResponse(getNavdpcpData(e.parameter));
-    }
+    if (action === 'getRecords') return createJsonResponse(getRecords());
+    if (action === 'getNavdpcp') return createJsonResponse(getNavdpcpData(e.parameter));
 
     return createJsonResponse({ 
       status: "online", 
       message: "QC-DESU District 2 Master Surveillance API is running." 
     });
   } catch (err) {
-    return createJsonResponse({ success: false, message: "SERVER_ERROR: " + err.toString() });
+    return createJsonResponse({ success: false, message: "SERVER_GET_ERROR: " + err.toString() });
   }
 }
 
 /**
- * Handles HTTP POST requests (For saving records or CIF uploads)
+ * Handles HTTP POST requests (Safe wrapper: NEVER returns raw HTML error pages)
  */
 function doPost(e) {
   try {
@@ -87,17 +90,9 @@ function doPost(e) {
 
     const action = payload.action || (e.parameter ? e.parameter.action : '');
 
-    if (action === 'login') {
-      return createJsonResponse(processLogin(payload));
-    }
-
-    if (action === 'saveRecord') {
-      return createJsonResponse(saveRecord(payload.formData, payload.rowIndex));
-    }
-
-    if (action === 'uploadPdsFile') {
-      return createJsonResponse(uploadPdsFile(payload));
-    }
+    if (action === 'login') return createJsonResponse(processLogin(payload));
+    if (action === 'saveRecord') return createJsonResponse(saveRecord(payload.formData, payload.rowIndex));
+    if (action === 'uploadPdsFile') return createJsonResponse(uploadPdsFile(payload));
 
     return createJsonResponse({ success: false, message: "Invalid POST action." });
   } catch (err) {
@@ -145,9 +140,6 @@ function getSpreadsheet() {
   }
 }
 
-/**
- * Creates an in-memory dictionary of all sheets in a single call (Eliminates 630 API calls!)
- */
 function getSheetMap(ss) {
   const map = {};
   if (!ss) return map;
@@ -235,7 +227,6 @@ function uploadPdsFile(payload) {
     }
 
     const rawData = payload.base64Data;
-    const caseId = payload.caseId || "CASE";
     const originalName = payload.fileName || "document.pdf";
 
     const matches = rawData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
@@ -990,13 +981,6 @@ function getFormattedTime() {
   return Utilities.formatDate(now, Session.getScriptTimeZone(), "hh:mm a");
 }
 
-// -------------------------------------------------------------------------
-// 6. PATIENT PROFILE RECORDS & CRUD SERVICES (HIGH SPEED + DUAL SYNC)
-// -------------------------------------------------------------------------
-
-/**
- * Ultra-fast pure JavaScript date formatter (0ms latency, zero server RPC calls)
- */
 function formatDateFast(d) {
   if (!d) return "";
   if (d instanceof Date && !isNaN(d.getTime())) {
@@ -1008,83 +992,17 @@ function formatDateFast(d) {
   return String(d).trim();
 }
 
-/**
- * Synchronizes newly added/edited patient data to the secondary spreadsheet
- */
-function saveToExternalSpreadsheet(formData) {
-  if (!PATIENT_SPREADSHEET_ID_OR_URL || PATIENT_SPREADSHEET_ID_OR_URL.trim() === "") return;
-
-  try {
-    const targetSs = openSpreadsheetByIdOrUrl(PATIENT_SPREADSHEET_ID_OR_URL);
-    if (!targetSs) return;
-
-    let targetSheet = null;
-    if (PATIENT_TARGET_SHEET_NAME && PATIENT_TARGET_SHEET_NAME.trim() !== "") {
-      targetSheet = targetSs.getSheetByName(PATIENT_TARGET_SHEET_NAME);
+function toMmDdYyyy(val) {
+  if (!val) return "";
+  if (typeof val === 'string') {
+    const match = val.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      return `${match[2]}/${match[3]}/${match[1]}`; // MM/DD/YYYY
     }
-    if (!targetSheet) {
-      targetSheet = targetSs.getSheetByName("MDB DISTRICT 2 2026") ||
-                    targetSs.getSheetByName("MDB") ||
-                    targetSs.getSheetByName("PATIENT PROFILE") ||
-                    targetSs.getSheets()[0];
-    }
-
-    if (!targetSheet) return;
-
-    const lastRow = targetSheet.getLastRow();
-    let lastCol = targetSheet.getLastColumn();
-
-    if (lastRow === 0 || lastCol === 0) {
-      const defaultHeaders = Object.keys(formData);
-      targetSheet.getRange(1, 1, 1, defaultHeaders.length).setValues([defaultHeaders]);
-      lastCol = defaultHeaders.length;
-    }
-
-    const headers = targetSheet.getRange(1, 1, 1, targetSheet.getLastColumn()).getValues()[0].map(h => String(h).trim().toUpperCase());
-
-    const rowValues = [];
-    headers.forEach(header => {
-      let val = "";
-      for (let key in formData) {
-        if (key.trim().toUpperCase() === header) {
-          val = formData[key];
-          break;
-        }
-      }
-      rowValues.push(val);
-    });
-
-    let targetRowIndex = -1;
-    const caseId = (formData["CASE_ID"] || formData["CASE ID"] || "").trim().toUpperCase();
-
-    if (caseId && targetSheet.getLastRow() > 1) {
-      let caseIdColIdx = headers.indexOf("CASE_ID");
-      if (caseIdColIdx === -1) caseIdColIdx = headers.indexOf("CASE ID");
-      
-      if (caseIdColIdx !== -1) {
-        const idColValues = targetSheet.getRange(2, caseIdColIdx + 1, targetSheet.getLastRow() - 1, 1).getValues();
-        for (let i = 0; i < idColValues.length; i++) {
-          if (String(idColValues[i][0]).trim().toUpperCase() === caseId) {
-            targetRowIndex = i + 2;
-            break;
-          }
-        }
-      }
-    }
-
-    if (targetRowIndex > 1) {
-      targetSheet.getRange(targetRowIndex, 1, 1, rowValues.length).setValues([rowValues]);
-    } else {
-      targetSheet.appendRow(rowValues);
-    }
-  } catch (err) {
-    Logger.log("saveToExternalSpreadsheet error: " + err.toString());
   }
+  return val;
 }
 
-/**
- * Loads thousands of patient records in <0.3 seconds
- */
 function getRecords() {
   try {
     const ss = getSpreadsheet();
@@ -1123,17 +1041,6 @@ function getRecords() {
   }
 }
 
-function toMmDdYyyy(val) {
-  if (!val) return "";
-  if (typeof val === 'string') {
-    const match = val.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (match) {
-      return `${match[2]}/${match[3]}/${match[1]}`; // MM/DD/YYYY
-    }
-  }
-  return val;
-}
-
 function saveRecord(formData, rowIndex) {
   try {
     const ss = getSpreadsheet();
@@ -1143,7 +1050,6 @@ function saveRecord(formData, rowIndex) {
 
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim().toUpperCase());
 
-    // 1. Locate existing row by CASE_ID first
     let targetRow = null;
     const caseId = (formData["CASE_ID"] || formData["CASE ID"] || "").trim().toUpperCase();
 
@@ -1166,10 +1072,7 @@ function saveRecord(formData, rowIndex) {
       targetRow = (rowIndex && !isNaN(rowIndex) && rowIndex > 1) ? rowIndex : sheet.getLastRow() + 1;
     }
 
-    // List of columns governed by Google Sheets formulas
-    const formulaColumns = ["COMPLETE ADDRESS", "MONTHS", "MORBIDITY_WEEK", "MORBIDITY WEEK"];
-
-    // Check existing formulas in the row above and the target row
+    // Inspect existing formulas
     const prevRow = Math.max(1, targetRow - 1);
     const prevFormulas = (prevRow > 1) ? sheet.getRange(prevRow, 1, 1, headers.length).getFormulas()[0] : [];
     const existingFormulas = (!isNewRow && targetRow <= sheet.getLastRow()) 
@@ -1178,15 +1081,15 @@ function saveRecord(formData, rowIndex) {
 
     const rowValues = [];
     headers.forEach((header, colIdx) => {
-      // If updating and cell already has a formula, preserve it!
-      if (existingFormulas[colIdx]) {
+      // 1. If updating and cell already has a formula, preserve it!
+      if (existingFormulas[colIdx] && existingFormulas[colIdx] !== "") {
         rowValues.push(existingFormulas[colIdx]);
         return;
       }
 
-      // If it's a formula column on a new row, leave blank for copyTo
-      if (formulaColumns.includes(header) || (isNewRow && prevFormulas[colIdx])) {
-        rowValues.push("");
+      // 2. If it is one of the 13 formulated columns, do not write static text
+      if (FORMULA_COLUMNS.includes(header)) {
+        rowValues.push(""); 
         return;
       }
 
@@ -1194,7 +1097,7 @@ function saveRecord(formData, rowIndex) {
       for (let key in formData) {
         if (key.trim().toUpperCase() === header) {
           val = formData[key];
-          if (header.includes("DATE") || header.includes("ATTENDANCE") || header.includes("ONSET")) {
+          if (header.includes("DATE") || header.includes("ATTENDANCE")) {
             val = toMmDdYyyy(val);
           }
           break;
@@ -1203,24 +1106,120 @@ function saveRecord(formData, rowIndex) {
       rowValues.push(val);
     });
 
-    // 2. Write the user-entered values
     sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
 
-    // 3. For new rows, automatically drag down/copy the formulas from row above!
-    if (isNewRow && prevRow > 1) {
+    // 3. For any missing formula or new row, copy down from row above
+    if (prevRow > 1) {
       headers.forEach((header, colIdx) => {
-        if (prevFormulas[colIdx] || formulaColumns.includes(header)) {
+        const hasFormula = existingFormulas[colIdx] && existingFormulas[colIdx] !== "";
+        if (!hasFormula && (FORMULA_COLUMNS.includes(header) || (prevFormulas[colIdx] && prevFormulas[colIdx] !== ""))) {
           sheet.getRange(prevRow, colIdx + 1).copyTo(sheet.getRange(targetRow, colIdx + 1));
         }
       });
     }
 
-    // 4. Synchronize to external spreadsheet
     saveToExternalSpreadsheet(formData);
 
     return { success: true, message: `Record successfully ${isNewRow ? 'saved' : 'updated'}!` };
   } catch (err) {
     return { success: false, message: `Failed to save: ${err.message}` };
+  }
+}
+
+function saveToExternalSpreadsheet(formData) {
+  if (!PATIENT_SPREADSHEET_ID_OR_URL || PATIENT_SPREADSHEET_ID_OR_URL.trim() === "") return;
+
+  try {
+    const targetSs = openSpreadsheetByIdOrUrl(PATIENT_SPREADSHEET_ID_OR_URL);
+    if (!targetSs) return;
+
+    let targetSheet = null;
+    if (PATIENT_TARGET_SHEET_NAME && PATIENT_TARGET_SHEET_NAME.trim() !== "") {
+      targetSheet = targetSs.getSheetByName(PATIENT_TARGET_SHEET_NAME);
+    }
+    if (!targetSheet) {
+      targetSheet = targetSs.getSheetByName("MDB DISTRICT 2 2026") ||
+                    targetSs.getSheetByName("MDB") ||
+                    targetSs.getSheetByName("PATIENT PROFILE") ||
+                    targetSs.getSheets()[0];
+    }
+
+    if (!targetSheet) return;
+
+    const lastRow = targetSheet.getLastRow();
+    let lastCol = targetSheet.getLastColumn();
+
+    if (lastRow === 0 || lastCol === 0) {
+      const defaultHeaders = Object.keys(formData);
+      targetSheet.getRange(1, 1, 1, defaultHeaders.length).setValues([defaultHeaders]);
+      lastCol = defaultHeaders.length;
+    }
+
+    const headers = targetSheet.getRange(1, 1, 1, targetSheet.getLastColumn()).getValues()[0].map(h => String(h).trim().toUpperCase());
+
+    let targetRowIndex = -1;
+    const caseId = (formData["CASE_ID"] || formData["CASE ID"] || "").trim().toUpperCase();
+
+    if (caseId && targetSheet.getLastRow() > 1) {
+      let caseIdColIdx = headers.indexOf("CASE_ID");
+      if (caseIdColIdx === -1) caseIdColIdx = headers.indexOf("CASE ID");
+      
+      if (caseIdColIdx !== -1) {
+        const idColValues = targetSheet.getRange(2, caseIdColIdx + 1, targetSheet.getLastRow() - 1, 1).getValues();
+        for (let i = 0; i < idColValues.length; i++) {
+          if (String(idColValues[i][0]).trim().toUpperCase() === caseId) {
+            targetRowIndex = i + 2;
+            break;
+          }
+        }
+      }
+    }
+
+    const isNew = (targetRowIndex === -1);
+    const targetRow = isNew ? targetSheet.getLastRow() + 1 : targetRowIndex;
+    const prevRow = Math.max(1, targetRow - 1);
+    const prevFormulas = (prevRow > 1) ? targetSheet.getRange(prevRow, 1, 1, headers.length).getFormulas()[0] : [];
+    const currentFormulas = (!isNew && targetRow <= targetSheet.getLastRow()) 
+      ? targetSheet.getRange(targetRow, 1, 1, headers.length).getFormulas()[0] 
+      : [];
+
+    const rowValues = [];
+    headers.forEach((header, colIdx) => {
+      if (currentFormulas[colIdx] && currentFormulas[colIdx] !== "") {
+        rowValues.push(currentFormulas[colIdx]);
+        return;
+      }
+      if (FORMULA_COLUMNS.includes(header)) {
+        rowValues.push("");
+        return;
+      }
+
+      let val = "";
+      for (let key in formData) {
+        if (key.trim().toUpperCase() === header) {
+          val = formData[key];
+          if (header.includes("DATE") || header.includes("ATTENDANCE")) {
+            val = toMmDdYyyy(val);
+          }
+          break;
+        }
+      }
+      rowValues.push(val);
+    });
+
+    targetSheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
+
+    if (prevRow > 1) {
+      headers.forEach((header, colIdx) => {
+        const hasFormula = currentFormulas[colIdx] && currentFormulas[colIdx] !== "";
+        if (!hasFormula && (FORMULA_COLUMNS.includes(header) || (prevFormulas[colIdx] && prevFormulas[colIdx] !== ""))) {
+          targetSheet.getRange(prevRow, colIdx + 1).copyTo(targetSheet.getRange(targetRow, colIdx + 1));
+        }
+      });
+    }
+
+  } catch (err) {
+    Logger.log("saveToExternalSpreadsheet error: " + err.toString());
   }
 }
 
