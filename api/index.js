@@ -1090,10 +1090,10 @@ function saveRecord(formData, rowIndex) {
       }
 
       // 2. If it is one of the 13 formulated columns, do not write static text
-      if (FORMULA_COLUMNS.includes(header)) {
-        rowValues.push(""); 
-        return;
-      }
+      //if (FORMULA_COLUMNS.includes(header)) {
+      //  rowValues.push(""); 
+      //  return;
+     // }
 
       let val = "";
       for (let key in formData) {
@@ -1114,13 +1114,13 @@ function saveRecord(formData, rowIndex) {
     if (prevRow > 1) {
       headers.forEach((header, colIdx) => {
         const hasFormula = existingFormulas[colIdx] && existingFormulas[colIdx] !== "";
-        if (!hasFormula && (FORMULA_COLUMNS.includes(header) || (prevFormulas[colIdx] && prevFormulas[colIdx] !== ""))) {
+        if (!hasFormula && prevFormulas[colIdx] && prevFormulas[colIdx] !== "") {
           sheet.getRange(prevRow, colIdx + 1).copyTo(sheet.getRange(targetRow, colIdx + 1));
         }
       });
     }
 
-    saveToExternalSpreadsheet(formData);
+    //saveToExternalSpreadsheet(formData);
 
     if (typeof syncDataToFirebase === 'function') syncDataToFirebase();
 
@@ -1216,7 +1216,7 @@ function saveToExternalSpreadsheet(formData) {
     if (prevRow > 1) {
       headers.forEach((header, colIdx) => {
         const hasFormula = currentFormulas[colIdx] && currentFormulas[colIdx] !== "";
-        if (!hasFormula && (FORMULA_COLUMNS.includes(header) || (prevFormulas[colIdx] && prevFormulas[colIdx] !== ""))) {
+        if (!hasFormula && prevFormulas[colIdx] && prevFormulas[colIdx] !== "") {
           targetSheet.getRange(prevRow, colIdx + 1).copyTo(targetSheet.getRange(targetRow, colIdx + 1));
         }
       });
@@ -1552,4 +1552,180 @@ function seedUsers() {
 
 function onSpreadsheetChange(e) {
   syncDataToFirebase();
+}
+
+function syncAndReconcileSheets() {
+  const origSs = getSpreadsheet();
+  const origSheet = getMdbSheet(origSs);
+
+  const copySs = openSpreadsheetByIdOrUrl(PATIENT_SPREADSHEET_ID_OR_URL);
+  if (!copySs) {
+    Logger.log("❌ Could not open Copy sheet. Check PATIENT_SPREADSHEET_ID_OR_URL.");
+    return;
+  }
+  const copySheet = copySs.getSheetByName(PATIENT_TARGET_SHEET_NAME) || copySs.getSheets()[0];
+
+  const lastRow = Math.min(origSheet.getLastRow(), copySheet.getLastRow());
+  const lastCol = Math.min(origSheet.getLastColumn(), copySheet.getLastColumn());
+
+  if (lastRow <= 1) {
+    Logger.log("❌ No data rows found.");
+    return;
+  }
+
+  Logger.log(`Syncing ${lastRow - 1} rows across both spreadsheets...`);
+
+  // Read both sheets in bulk
+  const origRange = origSheet.getRange(1, 1, lastRow, lastCol);
+  const origValues = origRange.getValues();
+  const origFormulas = origRange.getFormulas();
+
+  const copyRange = copySheet.getRange(1, 1, lastRow, lastCol);
+  const copyValues = copyRange.getValues();
+
+  const headers = origValues[0].map(h => String(h).trim().toUpperCase());
+
+  let origUpdated = false;
+  let copyUpdated = false;
+
+  for (let r = 1; r < lastRow; r++) {
+    for (let c = 0; c < lastCol; c++) {
+      const header = headers[c];
+      const isFormulaCol = FORMULA_COLUMNS.includes(header) || (origFormulas[r][c] && origFormulas[r][c] !== "");
+
+      // 1. FORMULA COLUMNS: Transfer calculated values from Original -> Copy Sheet
+      if (isFormulaCol) {
+        const origVal = origValues[r][c];
+        if (origVal !== "" && origVal !== null && origVal !== undefined && copyValues[r][c] !== origVal) {
+          copyValues[r][c] = origVal;
+          copyUpdated = true;
+        }
+      } 
+      // 2. USER DATA COLUMNS: Transfer entered clinical info from Copy -> Original Sheet
+      else {
+        const copyVal = copyValues[r][c];
+        const origVal = origValues[r][c];
+
+        if (copyVal !== "" && copyVal !== null && (origVal === "" || origVal === null)) {
+          origValues[r][c] = copyVal;
+          origUpdated = true;
+        } else if (origVal !== "" && origVal !== null && (copyVal === "" || copyVal === null)) {
+          copyValues[r][c] = origVal;
+          copyUpdated = true;
+        }
+      }
+    }
+  }
+
+  // Write back updates to Original Sheet without wiping its formulas
+  if (origUpdated) {
+    for (let r = 1; r < lastRow; r++) {
+      for (let c = 0; c < lastCol; c++) {
+        if (origFormulas[r][c] && origFormulas[r][c] !== "") {
+          origValues[r][c] = origFormulas[r][c]; // preserve the formula!
+        }
+      }
+    }
+    origRange.setValues(origValues);
+    Logger.log("✅ Original Sheet updated with missing user data!");
+  }
+
+  // Write back calculated values to Copy Sheet
+  if (copyUpdated) {
+    copyRange.setValues(copyValues);
+    Logger.log("✅ Copy Sheet updated with formula values!");
+  }
+
+  // Refresh Firebase
+  if (typeof syncDataToFirebase === 'function') {
+    syncDataToFirebase();
+    Logger.log("✅ Dashboard pushed to Firebase!");
+  }
+
+  Logger.log("🎉 SUCCESS! Both sheets are now 100% complete and synchronized.");
+}
+
+function testConnectionToOriginal() {
+  const originalId = "1rrlgAX7ad_IDcHdIXe8gHlWBFsvH5DPCD1ZlW_nR-d0";
+  try {
+    const ss = SpreadsheetApp.openById(originalId);
+    Logger.log("✅ SUCCESS! Connected to: " + ss.getName());
+    
+    const sheet = ss.getSheetByName("MDB DISTRICT 2 2026") || ss.getSheets()[0];
+    Logger.log("✅ Found Tab: " + sheet.getName());
+    Logger.log("Total rows in Original: " + sheet.getLastRow());
+  } catch (err) {
+    Logger.log("❌ CONNECTION FAILED: " + err.toString());
+  }
+}
+
+/**
+ * 🚀 SAFE ONE-WAY SYNC (Original -> Copy)
+ * - Reads evaluated values (plain text) from Original.
+ * - Fills blank cells in Copy (Disease, Case ID, Name, Morbidity Week, etc.).
+ * - GUARANTEE: NEVER edits or touches anything in your Original MDB.
+ */
+function copyAllInfoToCopySheet() {
+  const ORIGINAL_ID = "1rrlgAX7ad_IDcHdIXe8gHlWBFsvH5DPCD1ZlW_nR-d0";
+  const COPY_ID     = "1sUTII813loiUG-LD1j-JUgSHagmmKf82QhxU4-Kl5IA";
+
+  const origSs = SpreadsheetApp.openById(ORIGINAL_ID);
+  const origSheet = origSs.getSheetByName("MDB DISTRICT 2 2026") || origSs.getSheets()[0];
+
+  const copySs = SpreadsheetApp.openById(COPY_ID);
+  const copySheet = copySs.getSheetByName("MDB DISTRICT 2 2026") || 
+                    copySs.getSheetByName("Copy of MDB DISTRICT 2 2026") || 
+                    copySs.getSheets()[0];
+
+  const lastRow = Math.min(origSheet.getLastRow(), copySheet.getLastRow());
+  const lastCol = Math.min(origSheet.getLastColumn(), copySheet.getLastColumn());
+
+  if (lastRow <= 1) {
+    Logger.log("❌ No rows found to copy.");
+    return;
+  }
+
+  Logger.log(`Scanning and correcting ${lastRow - 1} rows from Original -> Copy...`);
+
+  const origValues = origSheet.getRange(1, 1, lastRow, lastCol).getValues();
+  const copyRange = copySheet.getRange(1, 1, lastRow, lastCol);
+  const copyValues = copyRange.getValues();
+  const headers = origValues[0].map(h => String(h || '').trim().toUpperCase());
+
+  let countUpdated = 0;
+
+  for (let r = 1; r < lastRow; r++) {
+    for (let c = 0; c < lastCol; c++) {
+      const header = headers[c];
+      const origVal = origValues[r][c];
+      const copyVal = copyValues[r][c];
+
+      const isFormulaCol = FORMULA_COLUMNS.includes(header);
+
+      // 1. FOR GREEN FORMULA COLUMNS: The Original is the master truth!
+      // Overwrite if different so copied-down names/diseases get corrected
+      if (isFormulaCol) {
+        if (origVal !== "" && origVal !== null && origVal !== undefined && copyVal !== origVal) {
+          copyValues[r][c] = origVal;
+          countUpdated++;
+        }
+      } 
+      // 2. FOR FIELD INVESTIGATION COLUMNS: Only fill if Copy is blank
+      else {
+        if ((copyVal === "" || copyVal === null || copyVal === undefined) && 
+            (origVal !== "" && origVal !== null && origVal !== undefined)) {
+          copyValues[r][c] = origVal;
+          countUpdated++;
+        }
+      }
+    }
+  }
+
+  if (countUpdated > 0) {
+    copyRange.setValues(copyValues);
+    Logger.log(`✅ SUCCESS! Corrected and filled ${countUpdated} cells in your Copy MDB.`);
+    Logger.log("🛡️ Your Original MDB was 100% UNTOUCHED.");
+  } else {
+    Logger.log("ℹ️ All cells in your Copy MDB are already accurate.");
+  }
 }

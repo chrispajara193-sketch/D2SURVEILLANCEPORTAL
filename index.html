@@ -2699,7 +2699,7 @@
 
             <div class="portal-section-title">ADDRESS & MAPPING</div>
             <div class="portal-form-grid">
-              <div class="portal-form-group"><label>BARANGAY *</label><input type="text" id="BARANGAY" readonly class="view-mode-input" title="Auto-filled by formula></div>
+              <div class="portal-form-group"><label>BARANGAY *</label><input type="text" id="BARANGAY" readonly class="view-mode-input" title="Auto-filled by formula"></div>
               <div class="portal-form-group"><label>HOUSE # / BLK/LT</label><input type="text" id="HOUSE # / BLK/LT"></div>
               <div class="portal-form-group"><label>STREET</label><input type="text" id="STREET"></div>
               <div class="portal-form-group"><label>AREA LOCATION</label><input type="text" id="AREA LOCATION"></div>
@@ -2712,7 +2712,7 @@
 
             <div class="portal-section-title">SCHOOL & INSTITUTION DETAILS</div>
             <div class="portal-form-grid">
-              <div class="portal-form-group"><label>FACILITY NAME</label><input type="text" id="FACILITY_NAME" readonly class=":view-mode-input" title="Auto-filled by formula"></div>
+              <div class="portal-form-group"><label>FACILITY NAME</label><input type="text" id="FACILITY_NAME" readonly class="view-mode-input" title="Auto-filled by formula"></div>
               <div class="portal-form-group"><label>NAME OF SCHOOL / WORK PLACE</label><input type="text" id="NAME OF SCHOOL / WORK PLACE"></div>
               <div class="portal-form-group"><label>SCHOOL BARANGAY</label><input type="text" id="SCHOOL BARANGAY"></div>
               <div class="portal-form-group"><label>GRADE LEVEL</label><input type="text" id="GRADE LEVEL"></div>
@@ -2959,9 +2959,10 @@ if (!firebase.apps.length) {
                 else if (methodName === 'getNavdpcpData') action = 'getNavdpcp';
 
                 let query = `?action=${action}`;
+query += `&${encodeURIComponent(key)}=${encodeURIComponent(args[0][key])}`;
                 if (args[0] && typeof args[0] === 'object') {
                   for (let key in args[0]) {
-                    if (args[0][key]) query += `&${encodeURIComponent(key)}=${encodeURIComponent(args[0][key])}`;
+                    if (args[0][key]) query += &${encodeURIComponent(key)}=${encodeURIComponent(args[0][key])};
                   }
                 }
                 response = await fetch(BACKEND_URL + query);
@@ -3501,7 +3502,7 @@ const PORTAL_DOCUMENTS = [
   });
 
   if (filtered.length === 0) {
-    grid.innerHTML = `<div class="col-12 text-center py-5 text-muted">No forms match your search or filter.</div>`;
+    grid.innerHTML = <div class="col-12 text-center py-5 text-muted">No forms match your search or filter.</div>;
     return;
   }
 
@@ -3567,7 +3568,7 @@ const PORTAL_DOCUMENTS = [
       if (!modal || !bodyEl) return;
 
       titleEl.innerText = doc.title;
-      metaEl.innerText = `${doc.disease} SURVEILLANCE • OFFICIAL TEMPLATE • DISTRICT 2 QC`;
+      metaEl.innerText = ${doc.disease} SURVEILLANCE • OFFICIAL TEMPLATE • DISTRICT 2 QC;
 
       bodyEl.innerHTML = `
         <div class="official-cif-paper">
@@ -3595,7 +3596,7 @@ const PORTAL_DOCUMENTS = [
           <div class="cif-section-header">2. CLINICAL PROFILE & ONSET TIMELINES</div>
           <div class="cif-grid-row">
             <div class="cif-field-box"><label>DATE OF FIRST ONSET</label><div class="cif-value">YYYY / MM / DD</div></div>
-            <div class="cif-field-box"><label>MORBIDITY WEEK</label><div class="cif-value">MW ___ (2026)</div></div>
+            <div class="cif-field-box"><label>MORBIDITY WEEK</label><div class="cif-value">MW _ (2026)</div></div>
             <div class="cif-field-box"><label>ADMISSION STATUS</label><div class="cif-value">[ ] Outpatient [ ] Inpatient [ ] ER</div></div>
             <div class="cif-field-box"><label>CURRENT OUTCOME</label><div class="cif-value">[ ] ALIVE  [ ] RECOVERED  [ ] DIED</div></div>
           </div>
@@ -3763,7 +3764,7 @@ const PORTAL_DOCUMENTS = [
       MORBIDITY_CALENDAR_2026.forEach(item => {
         const opt = document.createElement("option");
         opt.value = String(item.week);
-        opt.textContent = `MW ${item.week}`;
+        opt.textContent = MW ${item.week};
         sel.appendChild(opt);
       });
       sel.value = "All Morbidity Weeks";
@@ -3805,8 +3806,8 @@ const PORTAL_DOCUMENTS = [
           if (isSelected) stateClass += " orb-selected";
 
           const badgeClass = hasCases ? "badge-orange-glow" : "badge-grey-zero";
-          const clickHandler = hasCases ? `onclick="selectActiveDisease('${item.key}')"` : `onclick="return false;"`;
-          const titleTooltip = hasCases ? `Click to inspect ${item.label} (${count} active cases)` : `No active case logs for ${item.label}`;
+          const clickHandler = hasCases ? onclick="selectActiveDisease('${item.key}')" : onclick="return false;";
+          const titleTooltip = hasCases ? Click to inspect ${item.label} (${count} active cases) : No active case logs for ${item.label};
 
           gridHtml += `
             <div class="disease-orb-button ${stateClass}" ${clickHandler} title="${titleTooltip}">
@@ -4054,7 +4055,7 @@ const PORTAL_DOCUMENTS = [
           const dynamicAlpha = 0.8 + Math.sin(this.pulse) * 0.2;
           ctx.beginPath();
           ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${this.palette.r}, ${this.palette.g}, ${this.palette.b}, ${dynamicAlpha})`;
+          ctx.fillStyle = rgba(${this.palette.r}, ${this.palette.g}, ${this.palette.b}, ${dynamicAlpha});
           ctx.fill();
         }
       }
@@ -4103,7 +4104,7 @@ const PORTAL_DOCUMENTS = [
               ctx.beginPath();
               ctx.moveTo(particles[i].x, particles[i].y);
               ctx.lineTo(particles[j].x, particles[j].y);
-              ctx.strokeStyle = `rgba(${baseLineColor}, ${alpha})`;
+              ctx.strokeStyle = rgba(${baseLineColor}, ${alpha});
               ctx.lineWidth = 1.05;
               ctx.stroke();
             }
@@ -4138,14 +4139,14 @@ const PORTAL_DOCUMENTS = [
         const rect = wrapper.getBoundingClientRect();
         mouseX = e.clientX - rect.left;
         mouseY = e.clientY - rect.top;
-        if (dot) dot.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0) translate(-50%, -50%)`;
+        if (dot) dot.style.transform = translate3d(${mouseX}px, ${mouseY}px, 0) translate(-50%, -50%);
       });
 
       function renderSmoothCursor() {
         if (isHovering && ring) {
           ringX += (mouseX - ringX) * 0.18;
           ringY += (mouseY - ringY) * 0.18;
-          ring.style.transform = `translate3d(${ringX}px, ${ringY}px, 0) translate(-50%, -50%)`;
+          ring.style.transform = translate3d(${ringX}px, ${ringY}px, 0) translate(-50%, -50%);
         }
         requestAnimationFrame(renderSmoothCursor);
       }
@@ -4449,7 +4450,7 @@ const PORTAL_DOCUMENTS = [
         markerLayerGroup.clearLayers();
         const diseaseLabel = targetDisease === "ALL DISEASES" ? "District 2 Health Trends" : targetDisease;
         const titleElem = document.getElementById("mapDynamicTitle");
-        if (titleElem) titleElem.innerText = `${diseaseLabel} Geospatial Clusters Spot Map (200m Spatial Buffers)`;
+        if (titleElem) titleElem.innerText = ${diseaseLabel} Geospatial Clusters Spot Map (200m Spatial Buffers);
 
         let validPoints = [];
         subset.forEach(item => {
@@ -4556,7 +4557,7 @@ const PORTAL_DOCUMENTS = [
 
       const syncEl = document.getElementById("syncTimestamp");
       if (syncEl && res.syncTime) {
-        syncEl.innerHTML = `<i class="fa-solid fa-circle text-success"></i> Live Firebase ` + res.syncTime;
+        syncEl.innerHTML = <i class="fa-solid fa-circle text-success"></i> Live Firebase  + res.syncTime;
       }
       
       renderDashboardCategorizedSurveillance(datasetCache);
@@ -4741,29 +4742,29 @@ const PORTAL_DOCUMENTS = [
       if (t21Head && t21Body) {
         if (data.table21 && data.table21.rows && data.table21.rows.length > 0) {
           const testTypes = data.table21.testTypes || [];
-          let headHtml = `<tr><th>HEALTH CENTER DESIGNATION</th>`;
+          let headHtml = <tr><th>HEALTH CENTER DESIGNATION</th>;
           testTypes.forEach(tt => {
-            headHtml += `<th>${tt}</th>`;
+            headHtml += <th>${tt}</th>;
           });
-          headHtml += `<th>Grand total</th></tr>`;
+          headHtml += <th>Grand total</th></tr>;
           t21Head.innerHTML = headHtml;
 
           let bodyHtml = "";
           data.table21.rows.forEach(r => {
-            bodyHtml += `<tr><td><strong>${r.hc}</strong></td>`;
+            bodyHtml += <tr><td><strong>${r.hc}</strong></td>;
             testTypes.forEach(tt => {
-              bodyHtml += `<td>${r[tt] || 0}</td>`;
+              bodyHtml += <td>${r[tt] || 0}</td>;
             });
-            bodyHtml += `<td><strong>${r.grandTotal || 0}</strong></td></tr>`;
+            bodyHtml += <td><strong>${r.grandTotal || 0}</strong></td></tr>;
           });
-          bodyHtml += `<tr class="fw-bold bg-light"><td>Grand total</td>`;
+          bodyHtml += <tr class="fw-bold bg-light"><td>Grand total</td>;
           testTypes.forEach(tt => {
-            bodyHtml += `<td>${data.table21.totals[tt] || 0}</td>`;
+            bodyHtml += <td>${data.table21.totals[tt] || 0}</td>;
           });
-          bodyHtml += `<td>${data.table21.totals.grandTotal || 0}</td></tr>`;
+          bodyHtml += <td>${data.table21.totals.grandTotal || 0}</td></tr>;
           t21Body.innerHTML = bodyHtml;
         } else {
-          t21Head.innerHTML = `<tr><th>HEALTH CENTER DESIGNATION</th><th>Grand total</th></tr>`;
+          t21Head.innerHTML = <tr><th>HEALTH CENTER DESIGNATION</th><th>Grand total</th></tr>;
           t21Body.innerHTML = '<tr><td colspan="10" class="text-center py-3 text-muted">No testing records found.</td></tr>';
         }
       }
@@ -4778,9 +4779,9 @@ const PORTAL_DOCUMENTS = [
         let t34Html = "";
         if (data.table34 && data.table34.rows && data.table34.rows.length > 0) {
           data.table34.rows.forEach(r => {
-            t34Html += `<tr><td><strong>${r.hc}</strong></td><td>${r.clinical}</td><td>${r.alive}</td><td>${r.nullVal}</td><td>${r.died}</td><td><strong>${r.grandTotal}</strong></td></tr>`;
+            t34Html += <tr><td><strong>${r.hc}</strong></td><td>${r.clinical}</td><td>${r.alive}</td><td>${r.nullVal}</td><td>${r.died}</td><td><strong>${r.grandTotal}</strong></td></tr>;
           });
-          t34Html += `<tr class="fw-bold bg-light"><td>Grand total</td><td></td><td>${data.table34.totals.ALIVE || 0}</td><td>${data.table34.totals.nullVal || 0}</td><td>${data.table34.totals.DIED || 0}</td><td>${data.table34.totals.grandTotal || 0}</td></tr>`;
+          t34Html += <tr class="fw-bold bg-light"><td>Grand total</td><td></td><td>${data.table34.totals.ALIVE || 0}</td><td>${data.table34.totals.nullVal || 0}</td><td>${data.table34.totals.DIED || 0}</td><td>${data.table34.totals.grandTotal || 0}</td></tr>;
         } else {
           t34Html = '<tr><td colspan="6" class="text-center py-3 text-muted">No outcome records found.</td></tr>';
         }
@@ -4792,9 +4793,9 @@ const PORTAL_DOCUMENTS = [
         let t4Html = "";
         if (data.table4Star && data.table4Star.rows && data.table4Star.rows.length > 0) {
           data.table4Star.rows.forEach(r => {
-            t4Html += `<tr><td><strong>${r.hc}</strong></td><td>${r.phsu}</td><td>${r.hcDetected}</td><td><strong>${r.grandTotal}</strong></td></tr>`;
+            t4Html += <tr><td><strong>${r.hc}</strong></td><td>${r.phsu}</td><td>${r.hcDetected}</td><td><strong>${r.grandTotal}</strong></td></tr>;
           });
-          t4Html += `<tr class="fw-bold bg-light"><td>Grand total</td><td>${data.table4Star.totals.phsu || 0}</td><td>${data.table4Star.totals.hcDetected || 0}</td><td>${data.table4Star.totals.grandTotal || 0}</td></tr>`;
+          t4Html += <tr class="fw-bold bg-light"><td>Grand total</td><td>${data.table4Star.totals.phsu || 0}</td><td>${data.table4Star.totals.hcDetected || 0}</td><td>${data.table4Star.totals.grandTotal || 0}</td></tr>;
         } else {
           t4Html = '<tr><td colspan="4" class="text-center py-3 text-muted">No investigation source records found.</td></tr>';
         }
@@ -4834,7 +4835,7 @@ const PORTAL_DOCUMENTS = [
       const brgyLabel = (cleanBrgyKey === "ALL BARANGAY" || !cleanBrgyKey) ? "District 2 Overall" : "Brgy. " + cleanBrgyKey;
       
       const titleElem = document.getElementById("chartDynamicTitle");
-      if (titleElem) titleElem.innerText = `EPIDEMIC TRESHOLD, ALERT TRESHOLD and Current Yr-2026 - ${diseaseLabel} (${brgyLabel})`;
+      if (titleElem) titleElem.innerText = EPIDEMIC TRESHOLD, ALERT TRESHOLD and Current Yr-2026 - ${diseaseLabel} (${brgyLabel});
 
       const weekCounts = new Array(53).fill(0);
       filteredRecords.forEach(item => {
@@ -5103,7 +5104,7 @@ const PORTAL_DOCUMENTS = [
       const container = document.getElementById("narrativeReportText");
       if (!container) return;
       if (!records || records.length === 0) {
-        container.innerHTML = `<div class="text-muted small">No surveillance records found matching the active filter criteria.</div>`;
+        container.innerHTML = <div class="text-muted small">No surveillance records found matching the active filter criteria.</div>;
         return;
       }
 
@@ -5249,7 +5250,7 @@ const PORTAL_DOCUMENTS = [
       }
       const a = document.createElement('a');
       a.href = fileDataOrUrl;
-      a.download = `PDS_${caseId}`;
+      a.download = PDS_${caseId};
       a.target = "_blank";
       document.body.appendChild(a);
       a.click();
@@ -5263,7 +5264,7 @@ const PORTAL_DOCUMENTS = [
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Patient_${formData["CASE_ID"] || "Record"}.json`;
+      a.download = Patient_${formData["CASE_ID"] || "Record"}.json;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -5446,11 +5447,11 @@ const PORTAL_DOCUMENTS = [
       tableBody.innerHTML = "";
       
       if (recordCount) {
-        recordCount.textContent = `${records.length} Record${records.length === 1 ? "" : "s"}`;
+        recordCount.textContent = ${records.length} Record${records.length === 1 ? "" : "s"};
       }
 
       if (!records || records.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="${HEADERS.length + 1}" class="text-center py-4 text-muted">No records match the active filter criteria.</td></tr>`;
+        tableBody.innerHTML = <tr><td colspan="${HEADERS.length + 1}" class="text-center py-4 text-muted">No records match the active filter criteria.</td></tr>;
         return;
       }
 
@@ -5460,7 +5461,7 @@ const PORTAL_DOCUMENTS = [
         
         const actionTd = document.createElement("td");
         actionTd.className = "sticky-actions";
-        actionTd.innerHTML = `<button class="btn-edit" onclick="populateForEdit(${rowIdx})"><i class="fa-solid fa-pen-to-square me-1"></i>Edit</button>`;
+        actionTd.innerHTML = <button class="btn-edit" onclick="populateForEdit(${rowIdx})"><i class="fa-solid fa-pen-to-square me-1"></i>Edit</button>;
         row.appendChild(actionTd);
 
         HEADERS.forEach(header => {
@@ -5493,7 +5494,7 @@ const PORTAL_DOCUMENTS = [
     }
   });
 
-  document.getElementById("submitBtn").innerHTML = `<i class="fa-solid fa-pen-to-square me-1"></i> Update Record`;
+  document.getElementById("submitBtn").innerHTML = <i class="fa-solid fa-pen-to-square me-1"></i> Update Record;
   document.getElementById("cancelBtn").style.display = "inline-block";
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -5503,7 +5504,7 @@ const PORTAL_DOCUMENTS = [
       if (!form) return;
       form.reset();
       document.getElementById("rowIndex").value = "";
-      document.getElementById("submitBtn").innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> Save Entry`;
+      document.getElementById("submitBtn").innerHTML = <i class="fa-solid fa-floppy-disk me-1"></i> Save Entry;
       document.getElementById("cancelBtn").style.display = "none";
     }
 
