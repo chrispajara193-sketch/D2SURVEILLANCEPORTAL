@@ -25,8 +25,9 @@ const DISTRICT_2_BARANGAYS = [
   "PAYATAS"
 ];
 
-// 🛡️ MASTER LIST OF ALL 13 FORMULATED COLUMNS
+// 🛡️ MASTER LIST OF ALL 14 FORMULATED COLUMNS
 const FORMULA_COLUMNS = [
+  "CATEGORY",
   "DISEASE_NAME",
   "CASE_ID",
   "FULL NAME (LN,FN,MD)",
@@ -455,7 +456,6 @@ function getMetricsData(filters) {
       const rawClassValue = idxClass !== -1 ? String(row[idxClass]).trim().toUpperCase() : "";
       const rawRemarksValue = investigationRemarks.toUpperCase();
 
-      // Only skip if the row is completely empty or discarded
       if (!diseaseName && !barangay) continue;
       
       if (
@@ -547,7 +547,6 @@ function getMetricsData(filters) {
     
     const sortedWeeks = Array.from(dynamicWeeks).sort((a, b) => a - b);
     
-    // FAST BASELINE SEARCH: Only checks sheets that actually exist in sheetMap
     const baselines = {};
     const diseaseList = ["DENGUE", "MEASLES", "LEPTO", "LEPTOSPIROSIS", "COVID19", "COVID", "COVID-19", "CHIKUNGUNYA", "TYPHOID", "RABIES", "AFP", "DIPH", "PERTUSSIS", "ROTAVIRUS", "CHOLERA", "ILI", "SARI", "HEPA", "AMES", "MENINGO", "HFMD"];
     
@@ -1043,6 +1042,11 @@ function getRecords() {
   }
 }
 
+/**
+ * =========================================================================
+ * 🛡️ DUAL-ENGINE RECORD SAVER (ORIGINAL FORMULA SHIELD + COPY TEXT-ONLY)
+ * =========================================================================
+ */
 function saveRecord(formData, rowIndex) {
   try {
     const ORIGINAL_ID = "1rrlgAX7ad_IDcHdIXe8gHlWBFsvH5DPCD1ZlW_nR-d0";
@@ -1059,7 +1063,7 @@ function saveRecord(formData, rowIndex) {
     if (!origSheet) return { success: false, message: "Original MDB sheet not found." };
     if (!copySheet) return { success: false, message: "Copy MDB sheet not found." };
 
-    // Helper: Normalize keys (removes all spaces, symbols, and casing differences)
+    // Helper: Normalize keys (removes spaces, symbols, and casing differences)
     function cleanKey(k) {
       return String(k || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     }
@@ -1067,8 +1071,7 @@ function saveRecord(formData, rowIndex) {
     // Helper: Format date safely
     function formatDateVal(v) {
       if (!v) return "";
-      if (typeof toMmDdYyyy === 'function') return toMmDdYyyy(v);
-      return v;
+      return toMmDdYyyy(v);
     }
 
     // Map incoming formData with clean keys
@@ -1079,12 +1082,8 @@ function saveRecord(formData, rowIndex) {
 
     const caseId = String(normalizedData["CASEID"] || "").trim().toUpperCase();
 
-    // List of formula columns that should NEVER be overwritten
-    const FORMULA_COL_KEYS = [
-      "CATEGORY", "DISEASENAME", "CASEID", "CESUDATEADDED", 
-      "COMPLETEADDRESS", "MORBIDITYWEEK", "MONTHS", 
-      "AGEGROUP", "AGEINMONTHS", "BARANGAY", "AGEINYEARS", "FACILITYNAME", "DATEONSET"
-    ];
+    // Cleaned list of formula-driven column keys
+    const FORMULA_COL_KEYS = FORMULA_COLUMNS.map(cleanKey);
 
     // Helper: Find target row independently in a sheet
     function findTargetRow(sheet, headers, caseIdVal, fallbackRow) {
@@ -1111,7 +1110,9 @@ function saveRecord(formData, rowIndex) {
       return sheet.getLastRow() + 1;
     }
 
-    // --- 1. WRITE TO ORIGINAL MDB ---
+    // -------------------------------------------------------------
+    // STEP 1: WRITE CLINICAL DATA TO ORIGINAL MDB (PROTECT FORMULAS)
+    // -------------------------------------------------------------
     const origLastCol = origSheet.getLastColumn();
     const origHeaders = origSheet.getRange(1, 1, 1, origLastCol).getValues()[0];
     const origTargetRow = findTargetRow(origSheet, origHeaders, caseId, rowIndex);
@@ -1123,6 +1124,7 @@ function saveRecord(formData, rowIndex) {
     const prevRow = Math.max(1, origTargetRow - 1);
     const prevFormulas = (prevRow > 1) ? origSheet.getRange(prevRow, 1, 1, origLastCol).getFormulas()[0] : [];
 
+    const formulaColumnsToCopy = [];
     const origRowValues = [];
 
     origHeaders.forEach((header, colIdx) => {
@@ -1130,58 +1132,66 @@ function saveRecord(formData, rowIndex) {
       const currentFormula = !isNewRowOrig ? existingFormulasOrig[colIdx] : "";
       const currentValue   = !isNewRowOrig ? existingValuesOrig[colIdx] : "";
 
-      // SHIELD A: Keep live Google Sheets formula
+      // SHIELD A: If cell has a formula, NEVER overwrite it!
       if (currentFormula && currentFormula !== "") {
         origRowValues.push(currentFormula);
         return;
       }
 
-      // SHIELD B: Protected formula column
+      // SHIELD B: Formula-driven column
       if (FORMULA_COL_KEYS.indexOf(hClean) !== -1) {
+        if (prevFormulas[colIdx] && prevFormulas[colIdx] !== "") {
+          formulaColumnsToCopy.push(colIdx + 1); // Mark for relative formula copy
+        }
         origRowValues.push(currentValue !== undefined ? currentValue : "");
         return;
       }
 
-      // FIELD DATA: Match using cleanKey to avoid space/punctuation mismatches
+      // USER FIELD DATA: Fill with form submission
       if (normalizedData.hasOwnProperty(hClean)) {
         let val = normalizedData[hClean];
         if (hClean.includes("DATE") || hClean.includes("ATTENDANCE")) {
           val = formatDateVal(val);
         }
 
-        // PRESERVE: If the incoming form field is blank, DO NOT erase existing sheet data!
+        // PRESERVE: If input was empty on edit, DO NOT erase existing sheet data!
         if ((val === null || val === "") && !isNewRowOrig && currentValue !== "" && currentValue !== undefined) {
           origRowValues.push(currentValue);
         } else {
           origRowValues.push(val);
         }
       } else {
-        // Field was not in form: preserve whatever is in the sheet
+        // Unedited / unmapped column: retain existing sheet content
         origRowValues.push(currentValue !== undefined ? currentValue : "");
       }
     });
 
-    // Write to Original Sheet
+    // Write safe fields to Original MDB
     origSheet.getRange(origTargetRow, 1, 1, origRowValues.length).setValues([origRowValues]);
 
-    // Copy down formulas if this is a new row
-    if (isNewRowOrig && prevRow > 1) {
-      origHeaders.forEach((header, colIdx) => {
-        if (prevFormulas[colIdx] && prevFormulas[colIdx] !== "") {
-          origSheet.getRange(prevRow, colIdx + 1).copyTo(origSheet.getRange(origTargetRow, colIdx + 1));
-        }
+    // Copy down genuine formulas with dynamic row adjustments
+    if (formulaColumnsToCopy.length > 0 && prevRow > 1) {
+      formulaColumnsToCopy.forEach(colNum => {
+        origSheet.getRange(prevRow, colNum).copyTo(
+          origSheet.getRange(origTargetRow, colNum),
+          SpreadsheetApp.CopyPasteType.PASTE_FORMULAS,
+          false
+        );
       });
     }
 
-    // Force formula calculations in Original MDB
+    // Force Original MDB to execute all formulas immediately
     SpreadsheetApp.flush();
 
-    // --- 2. MIRROR TO COPY MDB ---
+    // -------------------------------------------------------------
+    // STEP 2: MIRROR TO COPY MDB AS PURE TEXT ONLY (ZERO FORMULAS)
+    // -------------------------------------------------------------
+    // .getValues() extracts evaluated calculations as plain text/numbers/dates
     const finalOrigValues = origSheet.getRange(origTargetRow, 1, 1, origLastCol).getValues()[0];
     const copyLastCol = copySheet.getLastColumn();
     const copyHeaders = copySheet.getRange(1, 1, 1, copyLastCol).getValues()[0];
     
-    // Find matching row independently in Copy Sheet
+    // Locate patient in Copy Sheet independently
     const copyTargetRow = findTargetRow(copySheet, copyHeaders, caseId, origTargetRow);
 
     if (copySheet.getMaxRows() < copyTargetRow) {
@@ -1198,22 +1208,31 @@ function saveRecord(formData, rowIndex) {
           break;
         }
       }
-      copyRowValues.push(matchedVal !== undefined ? matchedVal : "");
+
+      // Convert Date objects to text so they remain static in the Copy
+      if (matchedVal instanceof Date) {
+        matchedVal = formatDateVal(formatDateFast(matchedVal));
+      }
+
+      copyRowValues.push(matchedVal !== undefined && matchedVal !== null ? matchedVal : "");
     });
 
+    // Write pure text values to Copy MDB (no formulas)
     copySheet.getRange(copyTargetRow, 1, 1, copyRowValues.length).setValues([copyRowValues]);
 
-    // Commit changes immediately across Google servers
+    // Commit changes immediately
     SpreadsheetApp.flush();
 
-    // --- 3. REFRESH FIREBASE IF FUNCTION EXISTS ---
+    // -------------------------------------------------------------
+    // STEP 3: PUSH TO FIREBASE REALTIME DB
+    // -------------------------------------------------------------
     if (typeof syncDataToFirebase === 'function') {
       try { syncDataToFirebase(); } catch(e) { Logger.log("Firebase sync error: " + e.message); }
     }
 
     return {
       success: true,
-      message: `Record successfully updated in Original MDB (Row ${origTargetRow}) and mirrored to Copy MDB (Row ${copyTargetRow})!`
+      message: `Record saved! Original MDB formulas preserved (Row ${origTargetRow}) and mirrored as text to Copy MDB (Row ${copyTargetRow}).`
     };
 
   } catch (err) {
