@@ -1059,124 +1059,163 @@ function saveRecord(formData, rowIndex) {
     if (!origSheet) return { success: false, message: "Original MDB sheet not found." };
     if (!copySheet) return { success: false, message: "Copy MDB sheet not found." };
 
-    const origHeaders = origSheet.getRange(1, 1, 1, origSheet.getLastColumn()).getValues()[0].map(h => String(h || '').trim().toUpperCase());
-    const copyHeaders = copySheet.getRange(1, 1, 1, copySheet.getLastColumn()).getValues()[0].map(h => String(h || '').trim().toUpperCase());
+    // Helper: Normalize keys (removes all spaces, symbols, and casing differences)
+    function cleanKey(k) {
+      return String(k || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    }
 
-    // --- 1. ACCURATE ROW TARGETING (Prevents rogue bottom rows like 2776) ---
-    let targetRow = null;
-    const caseId = (formData["CASE_ID"] || formData["CASE ID"] || "").trim().toUpperCase();
+    // Helper: Format date safely
+    function formatDateVal(v) {
+      if (!v) return "";
+      if (typeof toMmDdYyyy === 'function') return toMmDdYyyy(v);
+      return v;
+    }
 
-    // Check by Case ID first
-    if (caseId && origSheet.getLastRow() > 1) {
-      let caseIdColIdx = origHeaders.indexOf("CASE_ID");
-      if (caseIdColIdx === -1) caseIdColIdx = origHeaders.indexOf("CASE ID");
-      if (caseIdColIdx !== -1) {
-        const idColValues = origSheet.getRange(2, caseIdColIdx + 1, origSheet.getLastRow() - 1, 1).getValues();
-        for (let i = 0; i < idColValues.length; i++) {
-          if (String(idColValues[i][0]).trim().toUpperCase() === caseId) {
-            targetRow = i + 2;
+    // Map incoming formData with clean keys
+    const normalizedData = {};
+    for (let key in formData) {
+      normalizedData[cleanKey(key)] = formData[key];
+    }
+
+    const caseId = String(normalizedData["CASEID"] || "").trim().toUpperCase();
+
+    // List of formula columns that should NEVER be overwritten
+    const FORMULA_COL_KEYS = [
+      "CATEGORY", "DISEASENAME", "CASEID", "CESUDATEADDED", 
+      "COMPLETEADDRESS", "MORBIDITYWEEK", "MONTHS", 
+      "AGEGROUP", "AGEINMONTHS", "BARANGAY", "AGEINYEARS", "FACILITYNAME", "DATEONSET"
+    ];
+
+    // Helper: Find target row independently in a sheet
+    function findTargetRow(sheet, headers, caseIdVal, fallbackRow) {
+      if (caseIdVal && sheet.getLastRow() > 1) {
+        let idCol = -1;
+        for (let i = 0; i < headers.length; i++) {
+          if (cleanKey(headers[i]) === "CASEID") {
+            idCol = i + 1;
             break;
           }
         }
-      }
-    }
-
-    // Fallback: If Case ID is blank, use the exact rowIndex passed from the portal
-    if (!targetRow && rowIndex && !isNaN(rowIndex) && Number(rowIndex) > 1 && Number(rowIndex) <= origSheet.getLastRow()) {
-      targetRow = Number(rowIndex);
-    }
-
-    const isNewRow = (!targetRow);
-    if (!targetRow) {
-      targetRow = origSheet.getLastRow() + 1;
-    }
-
-    // --- 2. FORMULA SHIELD: PROTECT ORIGINAL MDB FORMULAS ---
-    const existingFormulas = (!isNewRow && targetRow <= origSheet.getLastRow())
-      ? origSheet.getRange(targetRow, 1, 1, origHeaders.length).getFormulas()[0]
-      : [];
-    const existingValues = (!isNewRow && targetRow <= origSheet.getLastRow())
-      ? origSheet.getRange(targetRow, 1, 1, origHeaders.length).getValues()[0]
-      : [];
-
-    const prevRow = Math.max(1, targetRow - 1);
-    const prevFormulas = (prevRow > 1) ? origSheet.getRange(prevRow, 1, 1, origHeaders.length).getFormulas()[0] : [];
-
-    const rowValues = [];
-    origHeaders.forEach((header, colIdx) => {
-      // SHIELD A: Preserve existing formulas in Original MDB
-      if (existingFormulas[colIdx] && existingFormulas[colIdx] !== "") {
-        rowValues.push(existingFormulas[colIdx]);
-        return;
-      }
-
-      // SHIELD B: If it's one of the 13 formulated columns, NEVER overwrite with form input!
-      if (FORMULA_COLUMNS.includes(header)) {
-        rowValues.push(existingValues[colIdx] !== undefined ? existingValues[colIdx] : "");
-        return;
-      }
-
-      // FIELD DATA: Clinical & Field Investigation entries (Status, Dates, Remarks, GPS, etc.)
-      let val = "";
-      for (let key in formData) {
-        if (key.trim().toUpperCase() === header) {
-          val = formData[key];
-          if (header.includes("DATE") || header.includes("ATTENDANCE")) {
-            val = toMmDdYyyy(val);
+        if (idCol !== -1) {
+          const ids = sheet.getRange(2, idCol, sheet.getLastRow() - 1, 1).getValues();
+          for (let i = 0; i < ids.length; i++) {
+            if (String(ids[i][0] || '').trim().toUpperCase() === caseIdVal) {
+              return i + 2;
+            }
           }
-          break;
         }
       }
-      rowValues.push(val);
+      if (fallbackRow && Number(fallbackRow) > 1 && Number(fallbackRow) <= sheet.getLastRow()) {
+        return Number(fallbackRow);
+      }
+      return sheet.getLastRow() + 1;
+    }
+
+    // --- 1. WRITE TO ORIGINAL MDB ---
+    const origLastCol = origSheet.getLastColumn();
+    const origHeaders = origSheet.getRange(1, 1, 1, origLastCol).getValues()[0];
+    const origTargetRow = findTargetRow(origSheet, origHeaders, caseId, rowIndex);
+    const isNewRowOrig = origTargetRow > origSheet.getLastRow();
+
+    const existingFormulasOrig = (!isNewRowOrig) ? origSheet.getRange(origTargetRow, 1, 1, origLastCol).getFormulas()[0] : [];
+    const existingValuesOrig   = (!isNewRowOrig) ? origSheet.getRange(origTargetRow, 1, 1, origLastCol).getValues()[0] : [];
+
+    const prevRow = Math.max(1, origTargetRow - 1);
+    const prevFormulas = (prevRow > 1) ? origSheet.getRange(prevRow, 1, 1, origLastCol).getFormulas()[0] : [];
+
+    const origRowValues = [];
+
+    origHeaders.forEach((header, colIdx) => {
+      const hClean = cleanKey(header);
+      const currentFormula = !isNewRowOrig ? existingFormulasOrig[colIdx] : "";
+      const currentValue   = !isNewRowOrig ? existingValuesOrig[colIdx] : "";
+
+      // SHIELD A: Keep live Google Sheets formula
+      if (currentFormula && currentFormula !== "") {
+        origRowValues.push(currentFormula);
+        return;
+      }
+
+      // SHIELD B: Protected formula column
+      if (FORMULA_COL_KEYS.indexOf(hClean) !== -1) {
+        origRowValues.push(currentValue !== undefined ? currentValue : "");
+        return;
+      }
+
+      // FIELD DATA: Match using cleanKey to avoid space/punctuation mismatches
+      if (normalizedData.hasOwnProperty(hClean)) {
+        let val = normalizedData[hClean];
+        if (hClean.includes("DATE") || hClean.includes("ATTENDANCE")) {
+          val = formatDateVal(val);
+        }
+
+        // PRESERVE: If the incoming form field is blank, DO NOT erase existing sheet data!
+        if ((val === null || val === "") && !isNewRowOrig && currentValue !== "" && currentValue !== undefined) {
+          origRowValues.push(currentValue);
+        } else {
+          origRowValues.push(val);
+        }
+      } else {
+        // Field was not in form: preserve whatever is in the sheet
+        origRowValues.push(currentValue !== undefined ? currentValue : "");
+      }
     });
 
-    // Write safe user fields to Original Sheet
-    origSheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
+    // Write to Original Sheet
+    origSheet.getRange(origTargetRow, 1, 1, origRowValues.length).setValues([origRowValues]);
 
-    // If it's a new row, copy down genuine formulas from the row above
-    if (isNewRow && prevRow > 1) {
+    // Copy down formulas if this is a new row
+    if (isNewRowOrig && prevRow > 1) {
       origHeaders.forEach((header, colIdx) => {
         if (prevFormulas[colIdx] && prevFormulas[colIdx] !== "") {
-          origSheet.getRange(prevRow, colIdx + 1).copyTo(origSheet.getRange(targetRow, colIdx + 1));
+          origSheet.getRange(prevRow, colIdx + 1).copyTo(origSheet.getRange(origTargetRow, colIdx + 1));
         }
       });
     }
 
-    // --- 3. FORCE FORMULA EVALUATION ---
+    // Force formula calculations in Original MDB
     SpreadsheetApp.flush();
 
-    // --- 4. MIRROR 100% ACCURATE VALUES TO COPY MDB ---
-    // Read the fully calculated row from the Original MDB
-    const finalOrigValues = origSheet.getRange(targetRow, 1, 1, origHeaders.length).getValues()[0];
+    // --- 2. MIRROR TO COPY MDB ---
+    const finalOrigValues = origSheet.getRange(origTargetRow, 1, 1, origLastCol).getValues()[0];
+    const copyLastCol = copySheet.getLastColumn();
+    const copyHeaders = copySheet.getRange(1, 1, 1, copyLastCol).getValues()[0];
+    
+    // Find matching row independently in Copy Sheet
+    const copyTargetRow = findTargetRow(copySheet, copyHeaders, caseId, origTargetRow);
 
-    // Ensure Copy Sheet has enough rows
-    if (copySheet.getMaxRows() < targetRow) {
-      copySheet.insertRowsAfter(copySheet.getMaxRows(), targetRow - copySheet.getMaxRows());
+    if (copySheet.getMaxRows() < copyTargetRow) {
+      copySheet.insertRowsAfter(copySheet.getMaxRows(), copyTargetRow - copySheet.getMaxRows());
     }
 
-    // Map by header name to guarantee columns align perfectly
     const copyRowValues = [];
     copyHeaders.forEach((cHeader) => {
-      const origIdx = origHeaders.indexOf(cHeader);
-      if (origIdx !== -1) {
-        copyRowValues.push(finalOrigValues[origIdx]);
-      } else {
-        copyRowValues.push("");
+      const cClean = cleanKey(cHeader);
+      let matchedVal = "";
+      for (let i = 0; i < origHeaders.length; i++) {
+        if (cleanKey(origHeaders[i]) === cClean) {
+          matchedVal = finalOrigValues[i];
+          break;
+        }
       }
+      copyRowValues.push(matchedVal !== undefined ? matchedVal : "");
     });
 
-    // Write mirrored values into Copy Sheet
-    copySheet.getRange(targetRow, 1, 1, copyRowValues.length).setValues([copyRowValues]);
+    copySheet.getRange(copyTargetRow, 1, 1, copyRowValues.length).setValues([copyRowValues]);
 
-    // --- 5. REFRESH FIREBASE DASHBOARD ---
+    // Commit changes immediately across Google servers
+    SpreadsheetApp.flush();
+
+    // --- 3. REFRESH FIREBASE IF FUNCTION EXISTS ---
     if (typeof syncDataToFirebase === 'function') {
-      syncDataToFirebase();
+      try { syncDataToFirebase(); } catch(e) { Logger.log("Firebase sync error: " + e.message); }
     }
 
     return {
       success: true,
-      message: `Record ${isNewRow ? 'added' : 'updated'} in Original MDB and mirrored to Copy MDB!`
+      message: `Record successfully updated in Original MDB (Row ${origTargetRow}) and mirrored to Copy MDB (Row ${copyTargetRow})!`
     };
+
   } catch (err) {
     Logger.log("saveRecord Error: " + err.toString());
     return { success: false, message: "Save failed: " + err.message };
