@@ -2699,7 +2699,7 @@
 
             <div class="portal-section-title">ADDRESS & MAPPING</div>
             <div class="portal-form-grid">
-              <div class="portal-form-group"><label>BARANGAY *</label><input type="text" id="BARANGAY" readonly class="view-mode-input" title="Auto-filled by formula"></div>
+              <div class="portal-form-group"><label>BARANGAY *</label><input type="text" id="BARANGAY" readonly class="view-mode-input" title="Auto-filled by formula></div>
               <div class="portal-form-group"><label>HOUSE # / BLK/LT</label><input type="text" id="HOUSE # / BLK/LT"></div>
               <div class="portal-form-group"><label>STREET</label><input type="text" id="STREET"></div>
               <div class="portal-form-group"><label>AREA LOCATION</label><input type="text" id="AREA LOCATION"></div>
@@ -2712,7 +2712,7 @@
 
             <div class="portal-section-title">SCHOOL & INSTITUTION DETAILS</div>
             <div class="portal-form-grid">
-              <div class="portal-form-group"><label>FACILITY NAME</label><input type="text" id="FACILITY_NAME" readonly class="view-mode-input" title="Auto-filled by formula"></div>
+              <div class="portal-form-group"><label>FACILITY NAME</label><input type="text" id="FACILITY_NAME" readonly class=":view-mode-input" title="Auto-filled by formula"></div>
               <div class="portal-form-group"><label>NAME OF SCHOOL / WORK PLACE</label><input type="text" id="NAME OF SCHOOL / WORK PLACE"></div>
               <div class="portal-form-group"><label>SCHOOL BARANGAY</label><input type="text" id="SCHOOL BARANGAY"></div>
               <div class="portal-form-group"><label>GRADE LEVEL</label><input type="text" id="GRADE LEVEL"></div>
@@ -2815,14 +2815,17 @@
                 <label for="TOP DATA CONTROLLER WITH MULTIPLE CASE UPDATE">TOP DATA CONTROLLER (UPDATES)</label>
                 <select id="TOP DATA CONTROLLER WITH MULTIPLE CASE UPDATE" name="TOP DATA CONTROLLER WITH MULTIPLE CASE UPDATE">
                   <option value="" disabled selected>-- Select Data Controller --</option>
+                  <option value="EDMARIE JOYCE VILLAR">EDMARIE JOYCE VILLAR</option>
                   <option value="NORMAN SOLIBAN">NORMAN SOLIBAN</option>
                   <option value="MARJORIE VELASCO">MARJORIE VELASCO</option>
                   <option value="MARK ANTHONY HABER">MARK ANTHONY HABER</option>
                   <option value="PAMELA DOLLENTAS">PAMELA DOLLENTAS</option>
                   <option value="JOHN CEDRICK VELASCO">JOHN CEDRICK VELASCO</option>
                   <option value="PRINCE AUSTINE RINO">PRINCE AUSTINE RINO</option>
+                  <option value="ARCHIE DOCTOR">ARCHIE DOCTOR</option>
                   <option value="CHRIS PAJARA">CHRIS PAJARA</option>
                   <option value="MARJORIE ANGKIG">MARJORIE ANGKIG</option>
+                  <option value="CATHY MECATE">CATHY MECATE</option>
                   <option value="JEROME REDOBLADO">JEROME REDOBLADO</option>
                   <option value="MARC JAMES MORALES">MARC JAMES MORALES</option>
                   <option value="LLOYD CORPUZ">LLOYD CORPUZ</option>
@@ -2897,96 +2900,96 @@
 
   <script>
     /* =========================================================================
-     * FIREBASE REALTIME DATABASE CONNECTOR
-     * ========================================================================= */
-    const firebaseConfig = {
-      databaseURL: "https://d2surveillanceportal-default-rtdb.asia-southeast1.firebasedatabase.app"
-    };
+ * FIREBASE REALTIME DATABASE CONNECTOR
+ * ========================================================================= */
+  const firebaseConfig = {
+  databaseURL: "https://d2surveillanceportal-default-rtdb.asia-southeast1.firebasedatabase.app"
+  };
 
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.database();
-    
-    /* =========================================================================
-     * DIRECT VS CODE <-> GOOGLE APPS SCRIPT REAL-TIME CONNECTOR
-     * ========================================================================= */
-    const BACKEND_URL = "https://script.google.com/macros/s/AKfycbzK8oYUBQSo2RP43Wa_YwCjxY8GPozC-6MYJJVfL-8C6FWUFyBUtjIHfTQPii3uGGGa/exec";
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+  const db = firebase.database();
+  
+  /* =========================================================================
+   * DIRECT VS CODE <-> GOOGLE APPS SCRIPT REAL-TIME CONNECTOR
+   * ========================================================================= */
+  const BACKEND_URL = "https://script.google.com/macros/s/AKfycbzK8oYUBQSo2RP43Wa_YwCjxY8GPozC-6MYJJVfL-8C6FWUFyBUtjIHfTQPii3uGGGa/exec";
 
-    if (typeof google === "undefined" || !google.script || !google.script.run) {
-      function createRunner(successCb, failureCb) {
-        return new Proxy({}, {
-          get(target, methodName) {
-            if (methodName === "withSuccessHandler") return function(cb) { return createRunner(cb, failureCb); };
-            if (methodName === "withFailureHandler") return function(cb) { return createRunner(successCb, cb); };
+  if (typeof google === "undefined" || !google.script || !google.script.run) {
+    function createRunner(successCb, failureCb) {
+      return new Proxy({}, {
+        get(target, methodName) {
+          if (methodName === "withSuccessHandler") return function(cb) { return createRunner(cb, failureCb); };
+          if (methodName === "withFailureHandler") return function(cb) { return createRunner(successCb, cb); };
 
-            return async function(...args) {
-              try {
-                let response;
+          return async function(...args) {
+            try {
+              let response;
 
-                // 1. Instant Login via GET
-                if (methodName === 'processLogin') {
-                  const creds = args[0] || {};
-                  const query = `?action=login&username=${encodeURIComponent(creds.username || '')}&password=${encodeURIComponent(creds.password || '')}`;
-                  response = await fetch(BACKEND_URL + query);
+              // 1. Instant Login via GET
+              if (methodName === 'processLogin') {
+                const creds = args[0] || {};
+                const query = `?action=login&username=${encodeURIComponent(creds.username || '')}&password=${encodeURIComponent(creds.password || '')}`;
+                response = await fetch(BACKEND_URL + query);
+              }
+              // 2. Heavy data modifications (Save Record / Upload CIF)
+              else if (methodName === 'saveRecord' || methodName === 'uploadPdsFile') {
+                let payload = { action: methodName };
+                if (methodName === 'saveRecord') {
+                  payload.formData = args[0];
+                  payload.rowIndex = args[1];
+                } else {
+                  payload = args[0] || {};
+                  payload.action = methodName;
                 }
-                // 2. Heavy data modifications (Save Record / Upload CIF)
-                else if (methodName === 'saveRecord' || methodName === 'uploadPdsFile') {
-                  let payload = { action: methodName };
-                  if (methodName === 'saveRecord') {
-                    payload.formData = args[0];
-                    payload.rowIndex = args[1];
-                  } else {
-                    payload = args[0] || {};
-                    payload.action = methodName;
-                  }
 
-                  response = await fetch(BACKEND_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(payload),
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                  });
-                } 
-                // 3. All dashboard & database GET requests
-                else {
-                  let action = 'getMetrics';
-                  if (methodName === 'getDashboardData') action = 'getDashboard';
-                  else if (methodName === 'getDirectoryData') action = 'getDirectory';
-                  else if (methodName === 'getRecords') action = 'getRecords';
-                  else if (methodName === 'getNavdpcpData') action = 'getNavdpcp';
+                response = await fetch(BACKEND_URL, {
+                  method: 'POST',
+                  body: JSON.stringify(payload),
+                  headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                });
+              } 
+              // 3. All dashboard & database GET requests
+              else {
+                let action = 'getMetrics';
+                if (methodName === 'getDashboardData') action = 'getDashboard';
+                else if (methodName === 'getDirectoryData') action = 'getDirectory';
+                else if (methodName === 'getRecords') action = 'getRecords';
+                else if (methodName === 'getNavdpcpData') action = 'getNavdpcp';
 
-                  let query = `?action=${action}`;
-                  if (args[0] && typeof args[0] === 'object') {
-                    for (let key in args[0]) {
-                      if (args[0][key]) {
-                        query += `&${encodeURIComponent(key)}=${encodeURIComponent(args[0][key])}`;
-                      }
+                let query = `?action=${action}`;
+                if (args[0] && typeof args[0] === 'object') {
+                  for (let key in args[0]) {
+                    if (args[0][key]) {
+                      query += `&${encodeURIComponent(key)}=${encodeURIComponent(args[0][key])}`;
                     }
                   }
-                  response = await fetch(BACKEND_URL + query);
                 }
-
-                const rawText = await response.text();
-                let result;
-                try {
-                  result = JSON.parse(rawText);
-                } catch (parseErr) {
-                  throw new Error("Web App returned an HTML page instead of JSON. Ensure 'Who has access' is set to 'Anyone' in your Apps Script deployment.");
-                }
-
-                if (successCb) successCb(result);
-                return result;
-              } catch (err) {
-                console.error("Connection Error on " + methodName + ":", err);
-                if (failureCb) failureCb(err);
+                response = await fetch(BACKEND_URL + query);
               }
-            };
-          }
-        });
-      }
 
-      window.google = { script: { run: createRunner(null, null) } };
+              const rawText = await response.text();
+              let result;
+              try {
+                result = JSON.parse(rawText);
+              } catch (parseErr) {
+                throw new Error("Web App returned an HTML page instead of JSON. Ensure 'Who has access' is set to 'Anyone' in your Apps Script deployment.");
+              }
+
+              if (successCb) successCb(result);
+              return result;
+            } catch (err) {
+              console.error("Connection Error on " + methodName + ":", err);
+              if (failureCb) failureCb(err);
+            }
+          };
+        }
+      });
     }
+
+    window.google = { script: { run: createRunner(null, null) } };
+  }
 
     // GLOBAL CHART CONFIGURATION: DISABLE ALL GRIDLINES
     if (typeof Chart !== 'undefined') {
@@ -3006,25 +3009,474 @@
     let directoryStaffList = [];
 
     /* =========================================================
-       OFFICIAL FORMS MAPPING
-    ========================================================= */
-    let currentRepoCategory = 'ALL';
-    const PORTAL_DOCUMENTS = [
-      { title: "Diphtheria Case Investigation EpiForm", category: "EPIFORMS", type: "DOCX", disease: "DIPHTHERIA", path: "./assets/links/EpiForms (2026)/Diphtheria.docx", desc: "Official Case Investigation EpiForm for suspect & confirmed Diphtheria." },
-      { title: "Food and Waterborne Diseases (FWBD) EpiForm", category: "EPIFORMS", type: "DOCX", disease: "FWBD", path: "./assets/links/EpiForms (2026)/FWBD.docx", desc: "Comprehensive EpiForm for cholera, acute gastroenteritis, and foodborne illnesses." },
-      { title: "Hand, Foot, and Mouth Disease (HFMD) EpiForm", category: "EPIFORMS", type: "DOCX", disease: "HFMD", path: "./assets/links/EpiForms (2026)/HFMD.docx", desc: "Case investigation tool for Enterovirus and pediatric HFMD clusters." },
-      { title: "KoboToolbox Digital EpiForm Template", category: "EPIFORMS", type: "XLSX", disease: "SURVEILLANCE TOOL", path: "./assets/links/EpiForms (2026)/kobotool_epiform.xlsx", desc: "Excel standard structure for KoboToolbox digital mobile field collection." },
-      { title: "Leptospirosis Case EpiForm", category: "EPIFORMS", type: "DOCX", disease: "LEPTOSPIROSIS", path: "./assets/links/EpiForms (2026)/Leptospirosis.docx", desc: "Clinical investigation form including flood immersion history & prophylaxis." },
-      { title: "Measles-Rubella Case Investigation EpiForm", category: "EPIFORMS", type: "DOCX", disease: "MEASLES", path: "./assets/links/EpiForms (2026)/Measles_Rubella.docx", desc: "Standard form for fever and maculopapular rash investigation." },
-      { title: "Meningococcemia & Bacterial Meningitis EpiForm", category: "EPIFORMS", type: "DOCX", disease: "MENINGITIS", path: "./assets/links/EpiForms (2026)/Meningococcemia.docx", desc: "Urgent outbreak alert case form for petechial rash and CSF findings." },
-      { title: "Mpox (Monkeypox) Case Investigation EpiForm", category: "EPIFORMS", type: "DOCX", disease: "MPOX", path: "./assets/links/EpiForms (2026)/Mpox Epiform.docx", desc: "Specialized clinical and rash characterization form for suspected Mpox cases." },
-      { title: "Neonatal Tetanus Investigation EpiForm", category: "EPIFORMS", type: "DOCX", disease: "TETANUS", path: "./assets/links/EpiForms (2026)/Neonatal.docx", desc: "Surveillance form for neonatal tetanus cases and cord care history." },
-      { title: "Non-Neonatal Tetanus Investigation EpiForm", category: "EPIFORMS", type: "DOCX", disease: "TETANUS", path: "./assets/links/EpiForms (2026)/Non Neonatal.docx", desc: "Adult and pediatric wound exposure tetanus surveillance tool." },
-      { title: "Pan-Respiratory Surveillance EpiForm (ILI/SARI)", category: "EPIFORMS", type: "DOCX", disease: "RESPIRATORY", path: "./assets/links/EpiForms (2026)/Panrespi EpiForm.docx", desc: "Pan-respiratory acute coughing and severe respiratory distress log." },
-      { title: "Pertussis Case Investigation EpiForm", category: "EPIFORMS", type: "DOCX", disease: "PERTUSSIS", path: "./assets/links/EpiForms (2026)/Pertussis.docx", desc: "Investigation tool for paroxysmal whooping cough cases and contacts." },
-      { title: "Rabies & Animal Exposure EpiForm", category: "EPIFORMS", type: "DOCX", disease: "RABIES", path: "./assets/links/EpiForms (2026)/Rabies.docx", desc: "Animal bite incident, biting animal status, and PEP registry." },
-      { title: "Vector-Borne Diseases (Dengue/ChikV) EpiForm", category: "EPIFORMS", type: "DOCX", disease: "VECTOR-BORNE", path: "./assets/links/EpiForms (2026)/Vectorborne.docx", desc: "Comprehensive investigation form for Dengue and Chikungunya." }
-    ]; 
+   OFFICIAL FORMS MAPPING (MATCHING ./assets/links/ FOLDERS)
+========================================================= */
+let currentRepoCategory = 'ALL';
+const PORTAL_DOCUMENTS = [
+  // ---------------------------------------------------------
+  // 1. EPIFORMS (2026) - WORD & EXCEL TEMPLATES
+  // ---------------------------------------------------------
+  { 
+    title: "Diphtheria Case Investigation EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "DIPHTHERIA", 
+    path: "./assets/links/EpiForms (2026)/Diphtheria.docx",
+    desc: "Official Case Investigation EpiForm for suspect & confirmed Diphtheria."
+  },
+  { 
+    title: "Food and Waterborne Diseases (FWBD) EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "FWBD", 
+    path: "./assets/links/EpiForms (2026)/FWBD.docx",
+    desc: "Comprehensive EpiForm for cholera, acute gastroenteritis, and foodborne illnesses."
+  },
+  { 
+    title: "Hand, Foot, and Mouth Disease (HFMD) EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "HFMD", 
+    path: "./assets/links/EpiForms (2026)/HFMD.docx",
+    desc: "Case investigation tool for Enterovirus and pediatric HFMD clusters."
+  },
+  { 
+    title: "KoboToolbox Digital EpiForm Template", 
+    category: "EPIFORMS", 
+    type: "XLSX", 
+    disease: "SURVEILLANCE TOOL", 
+    path: "./assets/links/EpiForms (2026)/kobotool_epiform.xlsx",
+    desc: "Excel standard structure for KoboToolbox digital mobile field collection."
+  },
+  { 
+    title: "Leptospirosis Case EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "LEPTOSPIROSIS", 
+    path: "./assets/links/EpiForms (2026)/Leptospirosis.docx",
+    desc: "Clinical investigation form including flood immersion history & prophylaxis."
+  },
+  { 
+    title: "Measles-Rubella Case Investigation EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "MEASLES", 
+    path: "./assets/links/EpiForms (2026)/Measles_Rubella.docx",
+    desc: "Standard form for fever and maculopapular rash investigation."
+  },
+  { 
+    title: "Meningococcemia & Bacterial Meningitis EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "MENINGITIS", 
+    path: "./assets/links/EpiForms (2026)/Meningococcemia.docx",
+    desc: "Urgent outbreak alert case form for petechial rash and CSF findings."
+  },
+  { 
+    title: "Mpox (Monkeypox) Case Investigation EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "MPOX", 
+    path: "./assets/links/EpiForms (2026)/Mpox Epiform.docx",
+    desc: "Specialized clinical and rash characterization form for suspected Mpox cases."
+  },
+  { 
+    title: "Neonatal Tetanus Investigation EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "TETANUS", 
+    path: "./assets/links/EpiForms (2026)/Neonatal.docx",
+    desc: "Surveillance form for neonatal tetanus cases and cord care history."
+  },
+  { 
+    title: "Non-Neonatal Tetanus Investigation EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "TETANUS", 
+    path: "./assets/links/EpiForms (2026)/Non Neonatal.docx",
+    desc: "Adult and pediatric wound exposure tetanus surveillance tool."
+  },
+  { 
+    title: "Pan-Respiratory Surveillance EpiForm (ILI/SARI)", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "RESPIRATORY", 
+    path: "./assets/links/EpiForms (2026)/Panrespi EpiForm.docx",
+    desc: "Pan-respiratory acute coughing and severe respiratory distress log."
+  },
+  { 
+    title: "Pertussis Case Investigation EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "PERTUSSIS", 
+    path: "./assets/links/EpiForms (2026)/Pertussis.docx",
+    desc: "Investigation tool for paroxysmal whooping cough cases and contacts."
+  },
+  { 
+    title: "Rabies & Animal Exposure EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "RABIES", 
+    path: "./assets/links/EpiForms (2026)/Rabies.docx",
+    desc: "Animal bite incident, biting animal status, and PEP registry."
+  },
+  { 
+    title: "Vector-Borne Diseases (Dengue/ChikV) EpiForm", 
+    category: "EPIFORMS", 
+    type: "DOCX", 
+    disease: "VECTOR-BORNE", 
+    path: "./assets/links/EpiForms (2026)/Vectorborne.docx",
+    desc: "Comprehensive investigation form for Dengue and Chikungunya."
+  },
+
+  // ---------------------------------------------------------
+  // 2. FORMS (SACCL, NKTI, ETC) - LAB & SPECIALIZED FORMS
+  // ---------------------------------------------------------
+  { 
+    title: "Fillable Laboratory Request Form (PLED/RL)", 
+    category: "LAB_FORMS", 
+    type: "PDF", 
+    disease: "LABORATORY", 
+    path: "./assets/links/FORMS(SACCL,NKTI,ETC)/Fillable Laboratory Request Form-PLEASE DOWNLOAD_LRD-QM-FM-04_5Feb2026.pdf",
+    desc: "Standard fillable referral form for diagnostic specimen submission."
+  },
+  { 
+    title: "F-SACCL-046 Molecular Diagnostics Request Form", 
+    category: "LAB_FORMS", 
+    type: "PDF", 
+    disease: "SACCL MOLECULAR", 
+    path: "./assets/links/FORMS(SACCL,NKTI,ETC)/F-SACCL-046 MOLECULAR DIAGNOSTICS LAB REQUEST FORM.pdf",
+    desc: "Official SACCL National Reference Laboratory molecular PCR referral."
+  },
+  { 
+    title: "Hepatitis Care Form (HEPATI_1)", 
+    category: "LAB_FORMS", 
+    type: "PDF", 
+    disease: "HEPATITIS", 
+    path: "./assets/links/FORMS(SACCL,NKTI,ETC)/HEPATI_1 (Care Form).pdf",
+    desc: "Patient care and management tracking form for viral hepatitis."
+  },
+  { 
+    title: "COVID-19 Mandatory Isolation Order (v10)", 
+    category: "LAB_FORMS", 
+    type: "PDF", 
+    disease: "COVID-19", 
+    path: "./assets/links/FORMS(SACCL,NKTI,ETC)/Isolation-Order-Covid19_v10-with-iso-number.pdf",
+    desc: "Official Quezon City Health Department legal quarantine and isolation order."
+  },
+  { 
+    title: "STICH Surveillance Document", 
+    category: "LAB_FORMS", 
+    type: "PUB", 
+    disease: "SPECIALIZED", 
+    path: "./assets/links/FORMS(SACCL,NKTI,ETC)/STICH.pub",
+    desc: "Specialized clinical report and guidelines file (Publisher format)."
+  },
+  { 
+    title: "Viral Hepatitis B Case Report Form", 
+    category: "LAB_FORMS", 
+    type: "PDF", 
+    disease: "HEPATITIS B", 
+    path: "./assets/links/FORMS(SACCL,NKTI,ETC)/VIRAL-HEPATITIS-B-CASE-REPORT-FORM-revised.pdf",
+    desc: "Official case report registry form for Acute & Chronic Hepatitis B."
+  },
+
+  // ---------------------------------------------------------
+  // 3. NOTIFIABLE DISEASES FORMS (CRF / CIF / EPIQUESTIONNAIRES)
+  // ---------------------------------------------------------
+  
+  // === FOOD AND WATERBORNE DISEASES (FWBD) ===
+  { 
+    title: "Acute Bloody Diarrhea Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "CHOLERA / ABD", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/FWBD/ABD/CRF/Acute Bloody Diarrhea CRF.pdf",
+    desc: "Official case report form for Acute Bloody Diarrhea surveillance."
+  },
+  { 
+    title: "Acute Viral Hepatitis Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "HEPA", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/FWBD/ACUTE VIRAL HEPATITIS/CRF/Acute Viral Hepatitis CRF.pdf",
+    desc: "Official case report form for Acute Viral Hepatitis surveillance."
+  },
+  { 
+    title: "Cholera Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "CHOLERA", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/FWBD/CHOLERA/CRF/Cholera CRF.pdf",
+    desc: "Official case report form for Cholera surveillance."
+  },
+  { 
+    title: "Rotavirus Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "ROTAVIRUS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/FWBD/ROTAVIRUS/CRF/Rotavirus CRF - Printable.pdf",
+    desc: "Official case report form for Rotavirus surveillance."
+  },
+  { 
+    title: "Typhoid and Paratyphoid Fever Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "TYPHOID", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/FWBD/TYPHOID FEVER AND PARATYPHOID FEVER/CRF/Typhoid and Paratyphoid Fever CRF.pdf",
+    desc: "Official case report form for Typhoid and Paratyphoid Fever surveillance."
+  },
+
+  // === OTHER NOTIFIABLE DISEASES ===
+  { 
+    title: "Acute Meningitis-Encephalitis Surveillance (AMES) CRF", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "AMES", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/OTHER NOTIFIABLE DISEASES/AMES/CRF/ACUTE MENINGITIS-ENCEPHALITIS SURVEILLANCE CRF.pdf",
+    desc: "Official case report form for Acute Meningitis-Encephalitis surveillance."
+  },
+  { 
+    title: "Hand, Foot, and Mouth Disease (HFMD) CIF", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "HFMD", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/OTHER NOTIFIABLE DISEASES/HFMD/CIF/Hand Foot and Mouth Disease CIF.pdf",
+    desc: "Case Investigation Form for suspected and confirmed HFMD cases."
+  },
+  { 
+    title: "HFMD Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "HFMD", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/OTHER NOTIFIABLE DISEASES/HFMD/EPIQUESTIONNAIRE/HFMD.docx",
+    desc: "Detailed epidemiological investigation questionnaire for HFMD cases."
+  },
+  { 
+    title: "Meningococcal Disease CIF (RA 11332)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "MENINGITIS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/OTHER NOTIFIABLE DISEASES/MENINGOCOCEMIA/CIF/Meningococcal Disease RA-11332-FORMS.pdf",
+    desc: "Official Case Investigation Form for Meningococcal Disease under RA 11332."
+  },
+  { 
+    title: "Meningococcemia Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "MENINGITIS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/OTHER NOTIFIABLE DISEASES/MENINGOCOCEMIA/EPIQUESTIONNAIRRE/Meningococcemia.docx",
+    desc: "Epidemiological questionnaire for Meningococcemia contact tracing."
+  },
+  { 
+    title: "Mpox (Monkeypox) Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "MPOX", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/OTHER NOTIFIABLE DISEASES/MPOX/EPIQUESTIONNAIRRE/Mpox Epiform.docx",
+    desc: "Specialized clinical evaluation and exposure history questionnaire for Mpox."
+  },
+
+  // === PAN-RESPIRATORY ILLNESS ===
+  { 
+    title: "Pan-Respiratory Illness General EpiForm", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "RESPIRATORY", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/PAN-RESPIRATORY ILLNESS/Panrespi EpiForm.docx",
+    desc: "Pan-respiratory acute infection and clinical assessment form."
+  },
+  { 
+    title: "COVID-19 Case Investigation Form (CiF V.9)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "COVID-19", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/PAN-RESPIRATORY ILLNESS/COVID-19/CIF/Covid CiF V.9.pdf",
+    desc: "Standard Version 9 COVID-19 epidemiological investigation form."
+  },
+  { 
+    title: "Influenza-Like Illness (ILI) CRF", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "ILI", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/PAN-RESPIRATORY ILLNESS/INFLUENZA-LIKE ILLNESS/CRF/Influenza-Like Illness CRF.pdf",
+    desc: "Official Case Report Form for outpatient Influenza-Like Illness surveillance."
+  },
+  { 
+    title: "Severe Acute Respiratory Syndrome (SARI) CIF", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "SARI", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/PAN-RESPIRATORY ILLNESS/SEVERE ACUTE RESPIRATORY INFECTION/CIF/Severe Acute Respiratory Syndrome CIF.pdf",
+    desc: "Inpatient Case Investigation Form for Severe Acute Respiratory Infection."
+  },
+
+  // === VECTOR-BORNE DISEASES ===
+  { 
+    title: "Chikungunya Virus CIF", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "CHIKUNGUNYA", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VECTOR-BORNE DISEASES/CHIKUNGUNYA/CIF/Chikungunya Virus CIF.pdf",
+    desc: "Case Investigation Form for Chikungunya fever and acute arthralgia."
+  },
+  { 
+    title: "Dengue Clinical Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "DENGUE", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VECTOR-BORNE DISEASES/DENGUE/CRF/Dengue CRF - Printable.pdf",
+    desc: "Printable official Case Report Form for Dengue clinical surveillance."
+  },
+  { 
+    title: "Dengue Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "DENGUE", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VECTOR-BORNE DISEASES/DENGUE/EPI-QUESTIONNAIRRE/DENGUE EPI QUESTIONNAIRE.pdf",
+    desc: "Comprehensive field epidemiological questionnaire for Dengue cases."
+  },
+  { 
+    title: "Malaria Case Investigation Form (CIF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "MALARIA", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VECTOR-BORNE DISEASES/MALARIA/CIF/Malaria CIF.pdf",
+    desc: "National malaria surveillance and smear/RDT verification form."
+  },
+  { 
+    title: "Zika Virus CIF", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "ZIKA", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VECTOR-BORNE DISEASES/ZIKA/CIF/Zika Virus cif.pdf",
+    desc: "Surveillance form for Zika virus infection, rash, and pregnancy tracking."
+  },
+
+  // === VACCINE-PREVENTABLE DISEASES (VPD) ===
+  { 
+    title: "Acute Flaccid Paralysis (AFP) CIF", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "AFP", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/AFP/CIF/Acute Flaccid Paralysis CIF.pdf",
+    desc: "Official Polio/AFP surveillance form for sudden onset flaccid weakness."
+  },
+  { 
+    title: "AFP 60-Days Follow-Up Examination Form", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "AFP", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/AFP/AFP-60-DAYS-FOLLOW-UP-FORM.pdf",
+    desc: "Mandatory 60-day follow-up neurological evaluation record for AFP cases."
+  },
+  { 
+    title: "Diphtheria Case Investigation Form (CIF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "DIPHTHERIA", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/DIPHTHERIA/CIF/DIPHTHERIA CIF.pdf",
+    desc: "Case Investigation Form for pseudomembranous pharyngitis and close contacts."
+  },
+  { 
+    title: "Measles CIF (RA 11332 Revised Mandatory Reporting)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "MEASLES", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/MEASLES/CIF/Measles CIF - RA-11332-IRR-Revised-Mandatory-Reporting.pdf",
+    desc: "Revised mandatory reporting Case Investigation Form for Measles."
+  },
+  { 
+    title: "Measles & Rubella Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "MEASLES", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/MEASLES/EPI QUESTIONNAIRRE/MEASLES_RUBELLA EPI QUESTIONNAIRRE.pdf",
+    desc: "Field epidemiological questionnaire for acute fever and maculopapular rash."
+  },
+  { 
+    title: "Rubella Case Investigation Form (RA 11332)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "RUBELLA", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/RUBELLA/CIF/MEASLES RUBELLA RA-11332-FORMS.pdf",
+    desc: "Official surveillance and congenital rubella syndrome investigation tool."
+  },
+  { 
+    title: "Neonatal Tetanus Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "TETANUS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/NEONATAL TETANUS/EPIQUESTIONNAIRRE/Neonatal.docx",
+    desc: "Epidemiological questionnaire for neonatal tetanus and maternal TT status."
+  },
+  { 
+    title: "Non-Neonatal Tetanus Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "TETANUS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/NON-NEONATAL TETANUS/CRF/Non-neonatal Tetanus CRF.pdf",
+    desc: "Official Case Report Form for adult and child non-neonatal tetanus."
+  },
+  { 
+    title: "Non-Neonatal Tetanus Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "TETANUS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/NON-NEONATAL TETANUS/EPIQUESTIONNAIRE/Non Neonatal.docx",
+    desc: "Wound assessment, exposure, and booster history investigation tool."
+  },
+  { 
+    title: "Pertussis Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "PERTUSSIS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/PERTUSSIS/CRF/Pertussis CRF.pdf",
+    desc: "Official Case Report Form for whooping cough case registry."
+  },
+  { 
+    title: "Pertussis Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "PERTUSSIS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/VPD/PERTUSSIS/EPIQUESTIONNAIRE/Pertussis.docx",
+    desc: "Detailed field questionnaire for pertussis contacts and antibiotic prophylaxis."
+  },
+
+  // === ZOONOTIC DISEASES ===
+  { 
+    title: "Leptospirosis Case Report Form (CRF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "LEPTOSPIROSIS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/ZOONOTIC_/LEPTOSPIROSIS/CRF/Leptospirosis CRF.pdf",
+    desc: "Official Case Report Form for Leptospirosis surveillance."
+  },
+  { 
+    title: "Leptospirosis Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "LEPTOSPIROSIS", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/ZOONOTIC_/LEPTOSPIROSIS/EPIQUESTIONNAIRRE/Leptospirosis.docx",
+    desc: "Flood exposure, occupation, and MAT laboratory testing questionnaire."
+  },
+  { 
+    title: "Rabies Case Investigation Form (CIF)", 
+    category: "NOTIFIABLE", 
+    type: "PDF", 
+    disease: "RABIES", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/ZOONOTIC_/RABIES/CIF/RABIES CIF.pdf",
+    desc: "Official Case Investigation Form for human rabies and animal bite cases."
+  },
+  { 
+    title: "Rabies Epi-Questionnaire", 
+    category: "NOTIFIABLE", 
+    type: "DOCX", 
+    disease: "RABIES", 
+    path: "./assets/links/NOTIFIABLE DISEASES FORMS/ZOONOTIC_/RABIES/EPIQUESTIONNAIRRE/Rabies.docx",
+    desc: "Detailed animal exposure, biting dog status, and post-exposure prophylaxis record."
+  }
+]; 
 
     function filterRepoCategory(cat, evt) {
       currentRepoCategory = cat;
@@ -3035,71 +3487,153 @@
     }
 
     function renderRepositoryFiles() {
-      const grid = document.getElementById("repoFilesGrid");
-      const searchInput = document.getElementById("repoSearchInput");
-      if (!grid) return;
+  const grid = document.getElementById("repoFilesGrid");
+  const searchInput = document.getElementById("repoSearchInput");
+  if (!grid) return;
 
-      const searchTerm = (searchInput ? searchInput.value : "").toLowerCase().trim();
+  const searchTerm = (searchInput ? searchInput.value : "").toLowerCase().trim();
 
-      const filtered = PORTAL_DOCUMENTS.filter(f => {
-        const matchesCategory = (currentRepoCategory === 'ALL' || f.category === currentRepoCategory);
-        const matchesSearch = !searchTerm || 
-                              f.title.toLowerCase().includes(searchTerm) || 
-                              f.desc.toLowerCase().includes(searchTerm) || 
-                              f.disease.toLowerCase().includes(searchTerm);
-        return matchesCategory && matchesSearch;
-      });
+  const filtered = PORTAL_DOCUMENTS.filter(f => {
+    const matchesCategory = (currentRepoCategory === 'ALL' || f.category === currentRepoCategory);
+    const matchesSearch = !searchTerm || 
+                          f.title.toLowerCase().includes(searchTerm) || 
+                          f.desc.toLowerCase().includes(searchTerm) || 
+                          f.disease.toLowerCase().includes(searchTerm);
+    return matchesCategory && matchesSearch;
+  });
 
-      if (filtered.length === 0) {
-        grid.innerHTML = '<div class="col-12 text-center py-5 text-muted">No forms match your search or filter.</div>';
-        return;
-      }
+  if (filtered.length === 0) {
+    grid.innerHTML = <div class="col-12 text-center py-5 text-muted">No forms match your search or filter.</div>;
+    return;
+  }
 
-      let html = "";
-      filtered.forEach(f => {
-        let iconClass = "icon-doc";
-        let iconFa = "fa-file-word";
-        let btnText = "Download Form";
-        let btnIcon = "fa-download";
+  let html = "";
+  filtered.forEach(f => {
+    // Determine icon and color based on file type
+    let iconClass = "icon-doc";
+    let iconFa = "fa-file-word";
+    let btnText = "Download Form";
+    let btnIcon = "fa-download";
 
-        if (f.type === "PDF") {
-          iconClass = "icon-pdf";
-          iconFa = "fa-file-pdf";
-          btnText = "Open / Download";
-          btnIcon = "fa-arrow-up-right-from-square";
-        } else if (f.type === "XLSX") {
-          iconClass = "icon-sheet";
-          iconFa = "fa-file-excel";
-          btnText = "Download Excel";
-          btnIcon = "fa-file-excel";
-        }
+    if (f.type === "PDF") {
+      iconClass = "icon-pdf";
+      iconFa = "fa-file-pdf";
+      btnText = "Open / Download";
+      btnIcon = "fa-arrow-up-right-from-square";
+    } else if (f.type === "XLSX") {
+      iconClass = "icon-sheet";
+      iconFa = "fa-file-excel";
+      btnText = "Download Excel";
+      btnIcon = "fa-file-excel";
+    } else if (f.type === "PUB") {
+      iconClass = "icon-form";
+      iconFa = "fa-file-lines";
+      btnText = "Download File";
+      btnIcon = "fa-download";
+    }
 
-        html += `
-          <div class="col-12 col-md-6 col-xl-6">
-            <div class="repo-file-card">
-              <div class="d-flex align-items-center gap-3" style="min-width: 0; flex-grow: 1;">
-                <div class="repo-file-icon ${iconClass}">
-                  <i class="fa-solid ${iconFa}"></i>
-                </div>
-                <div style="min-width: 0;">
-                  <h6 class="fw-bold mb-1 text-truncate" style="font-size: 13px; color: var(--text-primary);" title="${f.title}">${f.title}</h6>
-                  <p class="small text-muted mb-1 text-truncate" style="font-size: 11px;">${f.desc}</p>
-                  <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-primary-subtle text-primary border" style="font-size: 9.5px;">${f.disease}</span>
-                    <span class="badge bg-secondary-subtle text-secondary border font-monospace" style="font-size: 9.5px;">${f.type}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                <a href="${encodeURI(f.path)}" download target="_blank" class="repo-action-btn text-decoration-none" title="Download ${f.title}">
-                  <i class="fa-solid ${btnIcon}"></i> ${btnText}
-                </a>
+    html += `
+      <div class="col-12 col-md-6 col-xl-6">
+        <div class="repo-file-card">
+          <div class="d-flex align-items-center gap-3" style="min-width: 0; flex-grow: 1;">
+            <div class="repo-file-icon ${iconClass}">
+              <i class="fa-solid ${iconFa}"></i>
+            </div>
+            <div style="min-width: 0;">
+              <h6 class="fw-bold mb-1 text-truncate" style="font-size: 13px; color: var(--text-primary);" title="${f.title}">${f.title}</h6>
+              <p class="small text-muted mb-1 text-truncate" style="font-size: 11px;">${f.desc}</p>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary-subtle text-primary border" style="font-size: 9.5px;">${f.disease}</span>
+                <span class="badge bg-secondary-subtle text-secondary border font-monospace" style="font-size: 9.5px;">${f.type}</span>
               </div>
             </div>
           </div>
-        `;
-      });
-      grid.innerHTML = html;
+          <div class="d-flex align-items-center gap-2 flex-shrink-0">
+            <a href="${encodeURI(f.path)}" download target="_blank" class="repo-action-btn text-decoration-none" title="Download ${f.title}">
+              <i class="fa-solid ${btnIcon}"></i> ${btnText}
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  grid.innerHTML = html;
+}
+
+    function openOfficialForm(docId) {
+      const doc = PORTAL_DOCUMENTS.find(d => d.id === docId) || PORTAL_DOCUMENTS[0];
+      const modal = document.getElementById("docPreviewModal");
+      const titleEl = document.getElementById("previewDocTitle");
+      const metaEl = document.getElementById("previewDocMeta");
+      const bodyEl = document.getElementById("previewDocBody");
+      if (!modal || !bodyEl) return;
+
+      titleEl.innerText = doc.title;
+      metaEl.innerText = ${doc.disease} SURVEILLANCE • OFFICIAL TEMPLATE • DISTRICT 2 QC;
+
+      bodyEl.innerHTML = `
+        <div class="official-cif-paper">
+          <div class="cif-header-banner">
+            <p>Republic of the Philippines • Department of Health • Quezon City Health Department</p>
+            <h4>EPIDEMIOLOGY AND SURVEILLANCE DIVISION (QC-DESU DISTRICT 2)</h4>
+            <h5>${doc.title}</h5>
+            <p>Official Case Investigation & Morbidity Registry Document • Compliance with RA 11332</p>
+          </div>
+
+          <div class="cif-section-header">1. PATIENT DEMOGRAPHIC IDENTIFICATION</div>
+          <div class="cif-grid-row">
+            <div class="cif-field-box"><label>EPID CASE ID</label><div class="cif-value">QC-D2-2026-XXXX</div></div>
+            <div class="cif-field-box"><label>PATIENT FULL NAME</label><div class="cif-value">____________________________</div></div>
+            <div class="cif-field-box"><label>DATE OF BIRTH</label><div class="cif-value">YYYY / MM / DD</div></div>
+            <div class="cif-field-box"><label>AGE / GENDER</label><div class="cif-value">___ y.o.  [ ] M  [ ] F</div></div>
+          </div>
+          <div class="cif-grid-row">
+            <div class="cif-field-box"><label>BARANGAY</label><div class="cif-value">[ ] BATASAN [ ] COMMONWEALTH [ ] PAYATAS [ ] HOLY SPIRIT [ ] BAGONG SILANGAN</div></div>
+            <div class="cif-field-box"><label>RESIDENTIAL ADDRESS</label><div class="cif-value">House #, Street, Area Location</div></div>
+            <div class="cif-field-box"><label>GUARDIAN / CONTACT</label><div class="cif-value">____________________________</div></div>
+            <div class="cif-field-box"><label>HEALTH CENTER ASSIGNED</label><div class="cif-value">____________________________</div></div>
+          </div>
+
+          <div class="cif-section-header">2. CLINICAL PROFILE & ONSET TIMELINES</div>
+          <div class="cif-grid-row">
+            <div class="cif-field-box"><label>DATE OF FIRST ONSET</label><div class="cif-value">YYYY / MM / DD</div></div>
+            <div class="cif-field-box"><label>MORBIDITY WEEK</label><div class="cif-value">MW _ (2026)</div></div>
+            <div class="cif-field-box"><label>ADMISSION STATUS</label><div class="cif-value">[ ] Outpatient [ ] Inpatient [ ] ER</div></div>
+            <div class="cif-field-box"><label>CURRENT OUTCOME</label><div class="cif-value">[ ] ALIVE  [ ] RECOVERED  [ ] DIED</div></div>
+          </div>
+          <div class="cif-field-box mb-2">
+            <label>PRESENTING SIGNS & SYMPTOMS</label>
+            <div class="cif-value">[ ] Acute High Fever  [ ] Headache / Retro-orbital Pain  [ ] Rash / Maculopapular  [ ] Myalgia / Arthralgia  [ ] Cough / Coryza  [ ] Vomiting / Diarrhea</div>
+          </div>
+
+          <div class="cif-section-header">3. EPIDEMIOLOGICAL EXPOSURE & LABORATORY CONFIRMATION</div>
+          <div class="cif-grid-row">
+            <div class="cif-field-box"><label>DATE SPECIMEN COLLECTED</label><div class="cif-value">YYYY / MM / DD</div></div>
+            <div class="cif-field-box"><label>TYPE OF TEST</label><div class="cif-value">[ ] NS1  [ ] IgM/IgG  [ ] PCR  [ ] MAT  [ ] RDT</div></div>
+            <div class="cif-field-box"><label>LAB TEST RESULT</label><div class="cif-value">[ ] POSITIVE  [ ] NEGATIVE  [ ] PENDING</div></div>
+            <div class="cif-field-box"><label>FINAL CASE CLASSIFICATION</label><div class="cif-value">[ ] SUSPECT  [ ] PROBABLE  [ ] CONFIRMED</div></div>
+          </div>
+
+          <div class="cif-section-header">4. SURVEILLANCE & VALIDATION SIGN-OFF</div>
+          <div class="cif-grid-row">
+            <div class="cif-field-box"><label>DATE INVESTIGATED</label><div class="cif-value">YYYY / MM / DD</div></div>
+            <div class="cif-field-box"><label>INVESTIGATING OFFICER</label><div class="cif-value">DSO / Nurse III Signature</div></div>
+            <div class="cif-field-box"><label>VALIDATION STATUS</label><div class="cif-value">[ ] DONE  [ ] PENDING FOLLOW-UP</div></div>
+            <div class="cif-field-box"><label>DATA CONTROLLER</label><div class="cif-value">Validated in Master Database</div></div>
+          </div>
+        </div>
+      `;
+
+      modal.style.display = "flex";
+    }
+
+    function closeDocPreview() {
+      const modal = document.getElementById("docPreviewModal");
+      if (modal) modal.style.display = "none";
+    }
+
+    function printCurrentDoc() {
+      window.print();
     }
 
     const CATEGORIZED_DISEASES = [
@@ -3231,7 +3765,7 @@
       MORBIDITY_CALENDAR_2026.forEach(item => {
         const opt = document.createElement("option");
         opt.value = String(item.week);
-        opt.textContent = `MW ${item.week}`;
+        opt.textContent = MW ${item.week};
         sel.appendChild(opt);
       });
       sel.value = "All Morbidity Weeks";
@@ -3273,8 +3807,8 @@
           if (isSelected) stateClass += " orb-selected";
 
           const badgeClass = hasCases ? "badge-orange-glow" : "badge-grey-zero";
-          const clickHandler = hasCases ? `onclick="selectActiveDisease('${item.key}')"` : `onclick="return false;"`;
-          const titleTooltip = hasCases ? `Click to inspect ${item.label} (${count} active cases)` : `No active case logs for ${item.label}`;
+          const clickHandler = hasCases ? onclick="selectActiveDisease('${item.key}')" : onclick="return false;";
+          const titleTooltip = hasCases ? Click to inspect ${item.label} (${count} active cases) : No active case logs for ${item.label};
 
           gridHtml += `
             <div class="disease-orb-button ${stateClass}" ${clickHandler} title="${titleTooltip}">
@@ -3357,7 +3891,18 @@
         else if (years <= 50) ageGroupInput.value = "41-50 y.o.";
         else ageGroupInput.value = "51+ y.o.";
       }
-    }
+}
+
+    function autoUpdateCompleteAddress() {
+      const house = (document.getElementById("HOUSE # / BLK/LT")?.value || "").trim();
+      const street = (document.getElementById("STREET")?.value || "").trim();
+      const completeAddressField = document.getElementById("COMPLETE ADDRESS");
+
+    if (!completeAddressField) return;
+
+      const parts = [house, street].filter(Boolean);
+      completeAddressField.value = parts.join(", ");
+}
 
     const HEADERS = [
       "HEALTH CENTER DESIGNATION", "CATEGORY", "INVESTIGATION REMARKS", "DISEASE_NAME",
@@ -3511,7 +4056,7 @@
           const dynamicAlpha = 0.8 + Math.sin(this.pulse) * 0.2;
           ctx.beginPath();
           ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${this.palette.r}, ${this.palette.g}, ${this.palette.b}, ${dynamicAlpha})`;
+          ctx.fillStyle = rgba(${this.palette.r}, ${this.palette.g}, ${this.palette.b}, ${dynamicAlpha});
           ctx.fill();
         }
       }
@@ -3559,8 +4104,8 @@
               const alpha = (1 - dist / maxDistance) * (isDark ? 0.55 : 0.42);
               ctx.beginPath();
               ctx.moveTo(particles[i].x, particles[i].y);
-              ctx.lineTo(particles[i].x, particles[i].y);
-              ctx.strokeStyle = `rgba(${baseLineColor}, ${alpha})`;
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.strokeStyle = rgba(${baseLineColor}, ${alpha});
               ctx.lineWidth = 1.05;
               ctx.stroke();
             }
@@ -3595,14 +4140,14 @@
         const rect = wrapper.getBoundingClientRect();
         mouseX = e.clientX - rect.left;
         mouseY = e.clientY - rect.top;
-        if (dot) dot.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0) translate(-50%, -50%)`;
+        if (dot) dot.style.transform = translate3d(${mouseX}px, ${mouseY}px, 0) translate(-50%, -50%);
       });
 
       function renderSmoothCursor() {
         if (isHovering && ring) {
           ringX += (mouseX - ringX) * 0.18;
           ringY += (mouseY - ringY) * 0.18;
-          ring.style.transform = `translate3d(${ringX}px, ${ringY}px, 0) translate(-50%, -50%)`;
+          ring.style.transform = translate3d(${ringX}px, ${ringY}px, 0) translate(-50%, -50%);
         }
         requestAnimationFrame(renderSmoothCursor);
       }
@@ -3771,9 +4316,19 @@
         localStorage.removeItem('d2_surveillance_username');
       }
 
+      // Safety timer: unlocks the button if the server hangs past 8 seconds
+      const timeoutCheck = setTimeout(() => {
+        if (submitBtn.disabled) {
+          submitBtn.disabled = false;
+          statusElem.style.color = 'var(--error)';
+          statusElem.innerText = 'SERVER TIMEOUT: Please verify Web App access is set to "Anyone".';
+        }
+      }, 8000);
+
       if (typeof google !== 'undefined' && google.script && google.script.run && google.script.run.processLogin) {
         google.script.run
           .withSuccessHandler(function(response) {
+            clearTimeout(timeoutCheck);
             submitBtn.disabled = false;
             if (response && response.success) {
               setLoginSuccess(response);
@@ -3783,6 +4338,7 @@
             }
           })
           .withFailureHandler(function(err) {
+            clearTimeout(timeoutCheck);
             submitBtn.disabled = false;
             statusElem.style.color = 'var(--error)';
             statusElem.innerText = 'SYSTEM_ERR: ' + (err ? err.message : 'Login failed.');
@@ -3790,6 +4346,7 @@
           .processLogin(formData);
       } else {
         setTimeout(function() {
+          clearTimeout(timeoutCheck);
           submitBtn.disabled = false;
           if (formData.username && formData.password) {
             setLoginSuccess(formData.username);
@@ -3828,7 +4385,7 @@
       document.getElementById('passwordInput').value = '';
       document.getElementById('status-message').innerText = '';
 
-      showToast(`Welcome back, ${currentUser}!`);
+      showToast(Welcome back, ${currentUser}!);
       loadDataServer();
       loadDirectoryData();
       loadCaseDurationData();
@@ -3906,7 +4463,7 @@
         markerLayerGroup.clearLayers();
         const diseaseLabel = targetDisease === "ALL DISEASES" ? "District 2 Health Trends" : targetDisease;
         const titleElem = document.getElementById("mapDynamicTitle");
-        if (titleElem) titleElem.innerText = `${diseaseLabel} Geospatial Clusters Spot Map (200m Spatial Buffers)`;
+        if (titleElem) titleElem.innerText = ${diseaseLabel} Geospatial Clusters Spot Map (200m Spatial Buffers);
 
         let validPoints = [];
         subset.forEach(item => {
@@ -3941,6 +4498,9 @@
       } catch (err) {}
     }
 
+    /* =========================================================================
+     * REAL-TIME DATA LOADER & REFRESH (FIREBASE STREAM)
+     * ========================================================================= */
     /* =========================================================================
      * REAL-TIME DATA LOADER & REFRESH (FIREBASE + APPS SCRIPT FALLBACK)
      * ========================================================================= */
@@ -4010,7 +4570,7 @@
 
       const syncEl = document.getElementById("syncTimestamp");
       if (syncEl && res.syncTime) {
-        syncEl.innerHTML = `<i class="fa-solid fa-circle text-success"></i> Live Firebase ${res.syncTime}`;
+        syncEl.innerHTML = <i class="fa-solid fa-circle text-success"></i> Live Firebase  + res.syncTime;
       }
       
       renderDashboardCategorizedSurveillance(datasetCache);
@@ -4188,36 +4748,36 @@
           t1Html = '<tr><td colspan="6" class="text-center py-3 text-muted">No records found.</td></tr>';
         }
         t1Body.innerHTML = t1Html;
-      }
+      } // <-- Was missing
 
       const t21Head = document.getElementById("navdpcpTable21Head");
       const t21Body = document.getElementById("navdpcpTable21Body");
       if (t21Head && t21Body) {
         if (data.table21 && data.table21.rows && data.table21.rows.length > 0) {
           const testTypes = data.table21.testTypes || [];
-          let headHtml = `<tr><th>HEALTH CENTER DESIGNATION</th>`;
+          let headHtml = <tr><th>HEALTH CENTER DESIGNATION</th>;
           testTypes.forEach(tt => {
-            headHtml += `<th>${tt}</th>`;
+            headHtml += <th>${tt}</th>;
           });
-          headHtml += `<th>Grand total</th></tr>`;
+          headHtml += <th>Grand total</th></tr>;
           t21Head.innerHTML = headHtml;
 
           let bodyHtml = "";
           data.table21.rows.forEach(r => {
-            bodyHtml += `<tr><td><strong>${r.hc}</strong></td>`;
+            bodyHtml += <tr><td><strong>${r.hc}</strong></td>;
             testTypes.forEach(tt => {
-              bodyHtml += `<td>${r[tt] || 0}</td>`;
+              bodyHtml += <td>${r[tt] || 0}</td>;
             });
-            bodyHtml += `<td><strong>${r.grandTotal || 0}</strong></td></tr>`;
+            bodyHtml += <td><strong>${r.grandTotal || 0}</strong></td></tr>;
           });
-          bodyHtml += `<tr class="fw-bold bg-light"><td>Grand total</td>`;
+          bodyHtml += <tr class="fw-bold bg-light"><td>Grand total</td>;
           testTypes.forEach(tt => {
-            bodyHtml += `<td>${data.table21.totals[tt] || 0}</td>`;
+            bodyHtml += <td>${data.table21.totals[tt] || 0}</td>;
           });
-          bodyHtml += `<td>${data.table21.totals.grandTotal || 0}</td></tr>`;
+          bodyHtml += <td>${data.table21.totals.grandTotal || 0}</td></tr>;
           t21Body.innerHTML = bodyHtml;
         } else {
-          t21Head.innerHTML = `<tr><th>HEALTH CENTER DESIGNATION</th><th>Grand total</th></tr>`;
+          t21Head.innerHTML = <tr><th>HEALTH CENTER DESIGNATION</th><th>Grand total</th></tr>;
           t21Body.innerHTML = '<tr><td colspan="10" class="text-center py-3 text-muted">No testing records found.</td></tr>';
         }
       }
@@ -4232,9 +4792,9 @@
         let t34Html = "";
         if (data.table34 && data.table34.rows && data.table34.rows.length > 0) {
           data.table34.rows.forEach(r => {
-            t34Html += `<tr><td><strong>${r.hc}</strong></td><td>${r.clinical}</td><td>${r.alive}</td><td>${r.nullVal}</td><td>${r.died}</td><td><strong>${r.grandTotal}</strong></td></tr>`;
+            t34Html += <tr><td><strong>${r.hc}</strong></td><td>${r.clinical}</td><td>${r.alive}</td><td>${r.nullVal}</td><td>${r.died}</td><td><strong>${r.grandTotal}</strong></td></tr>;
           });
-          t34Html += `<tr class="fw-bold bg-light"><td>Grand total</td><td></td><td>${data.table34.totals.ALIVE || 0}</td><td>${data.table34.totals.nullVal || 0}</td><td>${data.table34.totals.DIED || 0}</td><td>${data.table34.totals.grandTotal || 0}</td></tr>`;
+          t34Html += <tr class="fw-bold bg-light"><td>Grand total</td><td></td><td>${data.table34.totals.ALIVE || 0}</td><td>${data.table34.totals.nullVal || 0}</td><td>${data.table34.totals.DIED || 0}</td><td>${data.table34.totals.grandTotal || 0}</td></tr>;
         } else {
           t34Html = '<tr><td colspan="6" class="text-center py-3 text-muted">No outcome records found.</td></tr>';
         }
@@ -4246,9 +4806,9 @@
         let t4Html = "";
         if (data.table4Star && data.table4Star.rows && data.table4Star.rows.length > 0) {
           data.table4Star.rows.forEach(r => {
-            t4Html += `<tr><td><strong>${r.hc}</strong></td><td>${r.phsu}</td><td>${r.hcDetected}</td><td><strong>${r.grandTotal}</strong></td></tr>`;
+            t4Html += <tr><td><strong>${r.hc}</strong></td><td>${r.phsu}</td><td>${r.hcDetected}</td><td><strong>${r.grandTotal}</strong></td></tr>;
           });
-          t4Html += `<tr class="fw-bold bg-light"><td>Grand total</td><td>${data.table4Star.totals.phsu || 0}</td><td>${data.table4Star.totals.hcDetected || 0}</td><td>${data.table4Star.totals.grandTotal || 0}</td></tr>`;
+          t4Html += <tr class="fw-bold bg-light"><td>Grand total</td><td>${data.table4Star.totals.phsu || 0}</td><td>${data.table4Star.totals.hcDetected || 0}</td><td>${data.table4Star.totals.grandTotal || 0}</td></tr>;
         } else {
           t4Html = '<tr><td colspan="4" class="text-center py-3 text-muted">No investigation source records found.</td></tr>';
         }
@@ -4288,7 +4848,7 @@
       const brgyLabel = (cleanBrgyKey === "ALL BARANGAY" || !cleanBrgyKey) ? "District 2 Overall" : "Brgy. " + cleanBrgyKey;
       
       const titleElem = document.getElementById("chartDynamicTitle");
-      if (titleElem) titleElem.innerText = `EPIDEMIC TRESHOLD, ALERT TRESHOLD and Current Yr-2026 - ${diseaseLabel} (${brgyLabel})`;
+      if (titleElem) titleElem.innerText = EPIDEMIC TRESHOLD, ALERT TRESHOLD and Current Yr-2026 - ${diseaseLabel} (${brgyLabel});
 
       const weekCounts = new Array(53).fill(0);
       filteredRecords.forEach(item => {
@@ -4304,13 +4864,13 @@
       let resolvedBaseline = thresholdBaselines ? (thresholdBaselines[cleanDiseaseKey] || thresholdBaselines["DENGUE"]) : null;
 
       if (resolvedBaseline) {
-        const brgyData = (cleanBrgyKey && cleanBrgyKey !== "ALL BARANGAY" && resolvedBaseline.barangays)
-          ? (resolvedBaseline.barangays[cleanBrgyKey] || resolvedBaseline)
-          : resolvedBaseline;
+    const brgyData = (cleanBrgyKey && cleanBrgyKey !== "ALL BARANGAY" && resolvedBaseline.barangays)
+      ? (resolvedBaseline.barangays[cleanBrgyKey] || resolvedBaseline)
+      : resolvedBaseline;
 
-        if (brgyData.epidemic) epidemicThresholdLine = brgyData.epidemic;
-        if (brgyData.alert) alertThresholdLine = brgyData.alert;
-      }
+      if (brgyData.epidemic) epidemicThresholdLine = brgyData.epidemic;
+      if (brgyData.alert) alertThresholdLine = brgyData.alert;
+     }
 
       if (epiChartInstance !== null) epiChartInstance.destroy();
       const canvas = document.getElementById('epiCurveCanvas');
@@ -4455,55 +5015,56 @@
     }
 
     function generateHealthCenterDistributionChart(filteredRecords) {
-      const counts = {};
-      filteredRecords.forEach(item => {
-        const hc = String(item.healthCenter || "").trim();
-        if (hc && hc !== "Unassigned Health Center" && hc !== "DELIST/NON-RES") {
-          counts[hc] = (counts[hc] || 0) + 1;
-        }
-      });
+  const counts = {};
+  filteredRecords.forEach(item => {
+    const hc = String(item.healthCenter || "").trim();
+    if (hc && hc !== "Unassigned Health Center" && hc !== "DELIST/NON-RES") {
+      counts[hc] = (counts[hc] || 0) + 1;
+    }
+  });
 
-      const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  // Sort descending by highest case count
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
 
-      if (healthCenterDistributionChartInstance !== null) {
-        healthCenterDistributionChartInstance.destroy();
-      }
+  if (healthCenterDistributionChartInstance !== null) {
+    healthCenterDistributionChartInstance.destroy();
+  }
 
-      const canvas = document.getElementById('healthCenterDistributionCanvas');
-      if (!canvas) return;
+  const canvas = document.getElementById('healthCenterDistributionCanvas');
+  if (!canvas) return;
 
-      healthCenterDistributionChartInstance = new Chart(canvas.getContext('2d'), {
-        type: 'bar',
-        data: {
-          labels: entries.map(e => e[0]),
-          datasets: [{
-            data: entries.map(e => e[1]),
-            backgroundColor: '#2d6a7f',
-            borderRadius: 6
-          }]
+  healthCenterDistributionChartInstance = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: entries.map(e => e[0]),
+      datasets: [{
+        data: entries.map(e => e[1]),
+        backgroundColor: '#2d6a7f',
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: 'y', // Horizontal orientation for readable facility names
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { display: false }
         },
-        options: {
-          indexAxis: 'y',
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            x: {
-              beginAtZero: true,
-              grid: { display: false }
-            },
-            y: {
-              grid: { display: false },
-              ticks: {
-                font: { size: 10, weight: 'bold' }
-              }
-            }
+        y: {
+          grid: { display: false },
+          ticks: {
+            font: { size: 10, weight: 'bold' }
           }
         }
-      });
+      }
     }
+  });
+}
 
     function generateAllDiseasesBreakdownChart(subsetRecords) {
       const sourceCounts = { "PHSU ENDORSEMENT": 0, "HC DETECTED": 0 };
@@ -4556,7 +5117,7 @@
       const container = document.getElementById("narrativeReportText");
       if (!container) return;
       if (!records || records.length === 0) {
-        container.innerHTML = `<div class="text-muted small">No surveillance records found matching the active filter criteria.</div>`;
+        container.innerHTML = <div class="text-muted small">No surveillance records found matching the active filter criteria.</div>;
         return;
       }
 
@@ -4665,34 +5226,34 @@
     }
 
     function handlePdsFileUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      showToast("Uploading document to Drive...");
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const base64Data = e.target.result;
-        const caseId = document.getElementById("CASE_ID").value.trim() || "CASE";
-        
-        google.script.run
-          .withSuccessHandler(function(res) {
-            if (res && res.success) {
-              document.getElementById("CIF/CRF").value = res.url;
-              showToast("CIF uploaded successfully!");
-            } else {
-              showToast("Upload failed: " + (res ? res.message : "Error"));
-            }
-          })
-          .withFailureHandler(function(err) {
-            showToast("Upload error: " + err.message);
-          })
-          .uploadPdsFile({
-            base64Data: base64Data,
-            caseId: caseId,
-            fileName: file.name
-          });
-      };
-      reader.readAsDataURL(file);
-    }
+  const file = event.target.files[0];
+  if (!file) return;
+  showToast("Uploading document to Drive...");
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64Data = e.target.result;
+    const caseId = document.getElementById("CASE_ID").value.trim() || "CASE";
+    
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          document.getElementById("CIF/CRF").value = res.url;
+          showToast("CIF uploaded successfully!");
+        } else {
+          showToast("Upload failed: " + (res ? res.message : "Error"));
+        }
+      })
+      .withFailureHandler(function(err) {
+        showToast("Upload error: " + err.message);
+      })
+      .uploadPdsFile({
+        base64Data: base64Data,
+        caseId: caseId,
+        fileName: file.name
+      });
+  };
+  reader.readAsDataURL(file);
+}
 
     function downloadPdsFile(fileDataOrUrl, caseId = 'PDS_File') {
       if (!fileDataOrUrl) return;
@@ -4702,7 +5263,7 @@
       }
       const a = document.createElement('a');
       a.href = fileDataOrUrl;
-      a.download = `PDS_${caseId}`;
+      a.download = PDS_${caseId};
       a.target = "_blank";
       document.body.appendChild(a);
       a.click();
@@ -4716,7 +5277,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Patient_${formData["CASE_ID"] || "Record"}.json`;
+      a.download = Patient_${formData["CASE_ID"] || "Record"}.json;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -4899,11 +5460,11 @@
       tableBody.innerHTML = "";
       
       if (recordCount) {
-        recordCount.textContent = `${records.length} Record${records.length === 1 ? "" : "s"}`;
+        recordCount.textContent = ${records.length} Record${records.length === 1 ? "" : "s"};
       }
 
       if (!records || records.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="${HEADERS.length + 1}" class="text-center py-4 text-muted">No records match the active filter criteria.</td></tr>`;
+        tableBody.innerHTML = <tr><td colspan="${HEADERS.length + 1}" class="text-center py-4 text-muted">No records match the active filter criteria.</td></tr>;
         return;
       }
 
@@ -4913,7 +5474,7 @@
         
         const actionTd = document.createElement("td");
         actionTd.className = "sticky-actions";
-        actionTd.innerHTML = `<button class="btn-edit" onclick="populateForEdit(${rowIdx})"><i class="fa-solid fa-pen-to-square me-1"></i>Edit</button>`;
+        actionTd.innerHTML = <button class="btn-edit" onclick="populateForEdit(${rowIdx})"><i class="fa-solid fa-pen-to-square me-1"></i>Edit</button>;
         row.appendChild(actionTd);
 
         HEADERS.forEach(header => {
@@ -4926,36 +5487,37 @@
     }
 
     function populateForEdit(rowIndex) {
-      resetMasterForm();
-      const record = cachedRecords.find(r => (r._rowIndex || r.rowIndex) === rowIndex);
-      if (!record) return;
-      document.getElementById("rowIndex").value = record._rowIndex || record.rowIndex;
-      
-      HEADERS.forEach(h => {
-        const field = document.getElementById(h);
-        if (field) {
-          let val = record[h] || "";
-          if (field.type === 'date' && val.includes("/")) {
-            const parts = val.split("/");
-            if (parts.length === 3) {
-              val = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
-            }
-          }
-          field.value = val;
+  resetMasterForm();
+  const record = cachedRecords.find(r => (r._rowIndex || r.rowIndex) === rowIndex);
+  if (!record) return;
+  document.getElementById("rowIndex").value = record._rowIndex || record.rowIndex;
+  
+  HEADERS.forEach(h => {
+    const field = document.getElementById(h);
+    if (field) {
+      let val = record[h] || "";
+      // If the field is a date picker and the sheet gave MM/DD/YYYY, convert to YYYY-MM-DD so it displays properly
+      if (field.type === 'date' && val.includes("/")) {
+        const parts = val.split("/");
+        if (parts.length === 3) {
+          val = ${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')};
         }
-      });
-
-      document.getElementById("submitBtn").innerHTML = `<i class="fa-solid fa-pen-to-square me-1"></i> Update Record`;
-      document.getElementById("cancelBtn").style.display = "inline-block";
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      field.value = val;
     }
+  });
+
+  document.getElementById("submitBtn").innerHTML = <i class="fa-solid fa-pen-to-square me-1"></i> Update Record;
+  document.getElementById("cancelBtn").style.display = "inline-block";
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
     function resetMasterForm() {
       const form = document.getElementById("dataForm");
       if (!form) return;
       form.reset();
       document.getElementById("rowIndex").value = "";
-      document.getElementById("submitBtn").innerHTML = `<i class="fa-solid fa-floppy-disk me-1"></i> Save Entry`;
+      document.getElementById("submitBtn").innerHTML = <i class="fa-solid fa-floppy-disk me-1"></i> Save Entry;
       document.getElementById("cancelBtn").style.display = "none";
     }
 

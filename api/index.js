@@ -1045,21 +1045,33 @@ function getRecords() {
 
 function saveRecord(formData, rowIndex) {
   try {
-    const ss = getSpreadsheet();
-    const sheetMap = getSheetMap(ss);
-    const sheet = getMdbSheet(ss, sheetMap);
-    if (!sheet) return { success: false, message: "MDB Sheet not found." };
+    const ORIGINAL_ID = "1rrlgAX7ad_IDcHdIXe8gHlWBFsvH5DPCD1ZlW_nR-d0";
+    const COPY_ID     = "1sUTII813loiUG-LD1j-JUgSHagmmKf82QhxU4-Kl5IA";
 
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim().toUpperCase());
+    const origSs = SpreadsheetApp.openById(ORIGINAL_ID);
+    const origSheet = origSs.getSheetByName("MDB DISTRICT 2 2026") || origSs.getSheets()[0];
 
+    const copySs = SpreadsheetApp.openById(COPY_ID);
+    const copySheet = copySs.getSheetByName("MDB DISTRICT 2 2026") || 
+                      copySs.getSheetByName("Copy of MDB DISTRICT 2 2026") || 
+                      copySs.getSheets()[0];
+
+    if (!origSheet) return { success: false, message: "Original MDB sheet not found." };
+    if (!copySheet) return { success: false, message: "Copy MDB sheet not found." };
+
+    const origHeaders = origSheet.getRange(1, 1, 1, origSheet.getLastColumn()).getValues()[0].map(h => String(h || '').trim().toUpperCase());
+    const copyHeaders = copySheet.getRange(1, 1, 1, copySheet.getLastColumn()).getValues()[0].map(h => String(h || '').trim().toUpperCase());
+
+    // --- 1. ACCURATE ROW TARGETING (Prevents rogue bottom rows like 2776) ---
     let targetRow = null;
     const caseId = (formData["CASE_ID"] || formData["CASE ID"] || "").trim().toUpperCase();
 
-    if (caseId && sheet.getLastRow() > 1) {
-      let caseIdColIdx = headers.indexOf("CASE_ID");
-      if (caseIdColIdx === -1) caseIdColIdx = headers.indexOf("CASE ID");
+    // Check by Case ID first
+    if (caseId && origSheet.getLastRow() > 1) {
+      let caseIdColIdx = origHeaders.indexOf("CASE_ID");
+      if (caseIdColIdx === -1) caseIdColIdx = origHeaders.indexOf("CASE ID");
       if (caseIdColIdx !== -1) {
-        const idColValues = sheet.getRange(2, caseIdColIdx + 1, sheet.getLastRow() - 1, 1).getValues();
+        const idColValues = origSheet.getRange(2, caseIdColIdx + 1, origSheet.getLastRow() - 1, 1).getValues();
         for (let i = 0; i < idColValues.length; i++) {
           if (String(idColValues[i][0]).trim().toUpperCase() === caseId) {
             targetRow = i + 2;
@@ -1069,32 +1081,42 @@ function saveRecord(formData, rowIndex) {
       }
     }
 
-    const isNewRow = (!targetRow && (!rowIndex || isNaN(rowIndex) || rowIndex <= 1));
-    if (!targetRow) {
-      targetRow = (rowIndex && !isNaN(rowIndex) && rowIndex > 1) ? rowIndex : sheet.getLastRow() + 1;
+    // Fallback: If Case ID is blank, use the exact rowIndex passed from the portal
+    if (!targetRow && rowIndex && !isNaN(rowIndex) && Number(rowIndex) > 1 && Number(rowIndex) <= origSheet.getLastRow()) {
+      targetRow = Number(rowIndex);
     }
 
-    // Inspect existing formulas
-    const prevRow = Math.max(1, targetRow - 1);
-    const prevFormulas = (prevRow > 1) ? sheet.getRange(prevRow, 1, 1, headers.length).getFormulas()[0] : [];
-    const existingFormulas = (!isNewRow && targetRow <= sheet.getLastRow()) 
-      ? sheet.getRange(targetRow, 1, 1, headers.length).getFormulas()[0] 
+    const isNewRow = (!targetRow);
+    if (!targetRow) {
+      targetRow = origSheet.getLastRow() + 1;
+    }
+
+    // --- 2. FORMULA SHIELD: PROTECT ORIGINAL MDB FORMULAS ---
+    const existingFormulas = (!isNewRow && targetRow <= origSheet.getLastRow())
+      ? origSheet.getRange(targetRow, 1, 1, origHeaders.length).getFormulas()[0]
+      : [];
+    const existingValues = (!isNewRow && targetRow <= origSheet.getLastRow())
+      ? origSheet.getRange(targetRow, 1, 1, origHeaders.length).getValues()[0]
       : [];
 
+    const prevRow = Math.max(1, targetRow - 1);
+    const prevFormulas = (prevRow > 1) ? origSheet.getRange(prevRow, 1, 1, origHeaders.length).getFormulas()[0] : [];
+
     const rowValues = [];
-    headers.forEach((header, colIdx) => {
-      // 1. If updating and cell already has a formula, preserve it!
+    origHeaders.forEach((header, colIdx) => {
+      // SHIELD A: Preserve existing formulas in Original MDB
       if (existingFormulas[colIdx] && existingFormulas[colIdx] !== "") {
         rowValues.push(existingFormulas[colIdx]);
         return;
       }
 
-      // 2. If it is one of the 13 formulated columns, do not write static text
-      //if (FORMULA_COLUMNS.includes(header)) {
-      //  rowValues.push(""); 
-      //  return;
-     // }
+      // SHIELD B: If it's one of the 13 formulated columns, NEVER overwrite with form input!
+      if (FORMULA_COLUMNS.includes(header)) {
+        rowValues.push(existingValues[colIdx] !== undefined ? existingValues[colIdx] : "");
+        return;
+      }
 
+      // FIELD DATA: Clinical & Field Investigation entries (Status, Dates, Remarks, GPS, etc.)
       let val = "";
       for (let key in formData) {
         if (key.trim().toUpperCase() === header) {
@@ -1108,29 +1130,60 @@ function saveRecord(formData, rowIndex) {
       rowValues.push(val);
     });
 
-    sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
+    // Write safe user fields to Original Sheet
+    origSheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
 
-    // 3. For any missing formula or new row, copy down from row above
-    if (prevRow > 1) {
-      headers.forEach((header, colIdx) => {
-        const hasFormula = existingFormulas[colIdx] && existingFormulas[colIdx] !== "";
-        if (!hasFormula && prevFormulas[colIdx] && prevFormulas[colIdx] !== "") {
-          sheet.getRange(prevRow, colIdx + 1).copyTo(sheet.getRange(targetRow, colIdx + 1));
+    // If it's a new row, copy down genuine formulas from the row above
+    if (isNewRow && prevRow > 1) {
+      origHeaders.forEach((header, colIdx) => {
+        if (prevFormulas[colIdx] && prevFormulas[colIdx] !== "") {
+          origSheet.getRange(prevRow, colIdx + 1).copyTo(origSheet.getRange(targetRow, colIdx + 1));
         }
       });
     }
 
-    //saveToExternalSpreadsheet(formData);
+    // --- 3. FORCE FORMULA EVALUATION ---
+    SpreadsheetApp.flush();
 
-    if (typeof syncDataToFirebase === 'function') syncDataToFirebase();
+    // --- 4. MIRROR 100% ACCURATE VALUES TO COPY MDB ---
+    // Read the fully calculated row from the Original MDB
+    const finalOrigValues = origSheet.getRange(targetRow, 1, 1, origHeaders.length).getValues()[0];
 
-    return { success: true, message: `Record successfully ${isNewRow ? 'saved' : 'updated'}!` };
+    // Ensure Copy Sheet has enough rows
+    if (copySheet.getMaxRows() < targetRow) {
+      copySheet.insertRowsAfter(copySheet.getMaxRows(), targetRow - copySheet.getMaxRows());
+    }
+
+    // Map by header name to guarantee columns align perfectly
+    const copyRowValues = [];
+    copyHeaders.forEach((cHeader) => {
+      const origIdx = origHeaders.indexOf(cHeader);
+      if (origIdx !== -1) {
+        copyRowValues.push(finalOrigValues[origIdx]);
+      } else {
+        copyRowValues.push("");
+      }
+    });
+
+    // Write mirrored values into Copy Sheet
+    copySheet.getRange(targetRow, 1, 1, copyRowValues.length).setValues([copyRowValues]);
+
+    // --- 5. REFRESH FIREBASE DASHBOARD ---
+    if (typeof syncDataToFirebase === 'function') {
+      syncDataToFirebase();
+    }
+
+    return {
+      success: true,
+      message: `Record ${isNewRow ? 'added' : 'updated'} in Original MDB and mirrored to Copy MDB!`
+    };
   } catch (err) {
-    return { success: false, message: `Failed to save: ${err.message}` };
+    Logger.log("saveRecord Error: " + err.toString());
+    return { success: false, message: "Save failed: " + err.message };
   }
 }
 
-function saveToExternalSpreadsheet(formData) {
+/*function saveToExternalSpreadsheet(formData) {
   if (!PATIENT_SPREADSHEET_ID_OR_URL || PATIENT_SPREADSHEET_ID_OR_URL.trim() === "") return;
 
   try {
@@ -1225,7 +1278,7 @@ function saveToExternalSpreadsheet(formData) {
   } catch (err) {
     Logger.log("saveToExternalSpreadsheet error: " + err.toString());
   }
-}
+}*/
 
 // -------------------------------------------------------------------------
 // 7. DYNAMIC BASELINE ENGINE (HIGH-SPEED IN-MEMORY CACHE)
